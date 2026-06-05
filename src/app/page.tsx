@@ -119,28 +119,28 @@ export default function Home() {
           </AnimatedSection>
           <AnimatedSection delay={0.1}>
             <p className="section-subtitle">
-              Un pequeño estudio de desarrollo enfocado en construir aplicaciones útiles, bien
-              estructuradas y con atención al detalle.
+              No es una agencia. Es mi rincón personal para desarrollar apps y herramientas en mi
+              tiempo libre.
             </p>
           </AnimatedSection>
 
           <div className="about-grid">
             <AnimatedSection delay={0.2} className="about-text">
               <p>
-                En <span className="about-highlight">DripDev</span> no creemos en el código por
-                encargo. Nos importa la organización del trabajo, el diseño limpio y entregar
-                productos que aporten valor real.
+                <span className="about-highlight">DripDev</span> soy yo, Álvaro. Mientras termino el
+                Grado Superior en Desarrollo de Aplicaciones Multiplataforma, dedico mi tiempo libre
+                a crear apps y pequeñas utilidades que resuelvan problemas reales.
               </p>
               <p>
-                Trabajamos con <span className="about-highlight">React Native</span>,{' '}
-                <span className="about-highlight">Next.js</span>,{' '}
-                <span className="about-highlight">Firebase</span> y herramientas profesionales,
-                aplicando metodologías ágiles como <strong>Scrum</strong> para mantener el ritmo y la
-                calidad.
+                Me gusta el código limpio, aprender tecnologías nuevas y aplicar con cabeza lo que
+                voy aprendiendo de metodologías ágiles. Trabajo principalmente con{' '}
+                <span className="about-highlight">React Native</span>,{' '}
+                <span className="about-highlight">Next.js</span> y{' '}
+                <span className="about-highlight">Firebase</span>.
               </p>
               <p>
-                Cada proyecto empieza con una necesidad real: una app que facilite una decisión, una
-                extensión que ahorre tiempo, una experiencia que conecte a las personas.
+                Cada proyecto empieza con algo que me molesta, algo que echo de menos o una idea que
+                no me deja dormir. Si puede servirle a alguien más, mejor.
               </p>
             </AnimatedSection>
 
@@ -275,19 +275,6 @@ export default function Home() {
             >
               <a href="mailto:Roblesgg16@gmail.com" className="contact-email">
                 Roblesgg16@gmail.com
-              </a>
-              <a
-                href="tel:+34628751253"
-                style={{
-                  fontSize: '1.3rem',
-                  color: 'var(--fg-muted)',
-                  textDecoration: 'none',
-                  transition: 'color 0.3s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--fg-muted)')}
-              >
-                628 75 12 53
               </a>
               <p style={{ color: 'var(--fg-muted)', fontSize: '0.95rem' }}>
                 Sangonera la Seca, Murcia
