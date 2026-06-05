@@ -194,6 +194,12 @@ main {
   position: relative;
 }
 
+@media (max-width: 640px) {
+  .hero {
+    padding: 120px 8px 40px;
+  }
+}
+
 .hero-label {
   font-size: 0.85rem;
   font-weight: 600;
@@ -456,29 +462,32 @@ main {
 }
 
 
-/* Modern Card Carousel */
-.carousel-section {
+/* Coverflow 3D Carousel */
+.coverflow-section {
   position: relative;
   width: 100%;
-  padding: 40px 0 60px;
+  padding: 40px 0 80px;
   z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
+  perspective: 1200px;
 }
 
-.carousel-viewport {
+.coverflow-stage {
   width: 100%;
-  max-width: 900px;
-  height: 520px;
+  max-width: 1100px;
+  height: 540px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  overflow: visible;
   position: relative;
+  perspective: 1200px;
+  overflow: visible;
+  padding-top: 30px;
 }
 
-.carousel-track-modern {
+.coverflow-track {
   position: relative;
   width: 360px;
   height: 460px;
@@ -486,13 +495,14 @@ main {
   align-items: center;
   justify-content: center;
   cursor: grab;
+  transform-style: preserve-3d;
 }
 
-.carousel-track-modern:active {
+.coverflow-track:active {
   cursor: grabbing;
 }
 
-.carousel-card-modern {
+.coverflow-card {
   position: absolute;
   width: 360px;
   height: 460px;
@@ -506,37 +516,49 @@ main {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: box-shadow 0.4s ease;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform, opacity, filter;
 }
 
-.carousel-card-modern.active {
-  box-shadow: var(--shadow-lg);
-}
-
-.carousel-card-modern:hover {
+.coverflow-card.active {
+  box-shadow: 0 40px 100px -30px rgba(0, 0, 0, 0.12), 0 16px 40px -12px rgba(0, 0, 0, 0.06);
   border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 32px 80px -20px rgba(0, 0, 0, 0.1), 0 12px 40px -10px rgba(0, 0, 0, 0.05);
 }
 
-.carousel-card-visual {
+.coverflow-card-placeholder {
+  cursor: default;
+  pointer-events: none;
+}
+
+.coverflow-card-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.coverflow-card-visual {
   position: relative;
   height: 260px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(245,247,250,0.8) 100%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(245,247,250,0.85) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid var(--glass-border);
 }
 
-.carousel-card-img {
+.coverflow-card-img {
   width: 140px;
   height: 140px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 28px;
   box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.12);
 }
 
-.carousel-card-fallback {
+.coverflow-card-fallback {
   width: 140px;
   height: 140px;
   border-radius: 28px;
@@ -546,9 +568,10 @@ main {
   justify-content: center;
   color: var(--accent);
   box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.1);
+  font-size: 2.5rem;
 }
 
-.carousel-card-badge {
+.coverflow-card-badge {
   position: absolute;
   top: 20px;
   right: 20px;
@@ -563,14 +586,14 @@ main {
   border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
-.carousel-card-content {
+.coverflow-card-content {
   padding: 32px;
   display: flex;
   flex-direction: column;
   flex: 1;
 }
 
-.carousel-card-title {
+.coverflow-card-title {
   font-size: 1.6rem;
   font-weight: 900;
   margin-bottom: 10px;
@@ -578,7 +601,7 @@ main {
   color: var(--fg);
 }
 
-.carousel-card-desc {
+.coverflow-card-desc {
   font-size: 0.95rem;
   color: var(--fg-secondary);
   line-height: 1.55;
@@ -587,7 +610,7 @@ main {
   font-weight: 500;
 }
 
-.carousel-card-link {
+.coverflow-card-link {
   color: var(--accent);
   font-weight: 700;
   font-size: 0.9rem;
@@ -597,18 +620,32 @@ main {
   transition: gap 0.3s ease;
 }
 
-.carousel-card-modern:hover .carousel-card-link {
+.coverflow-card:hover .coverflow-card-link {
   gap: 10px;
 }
 
-.carousel-controls {
+.coverflow-card-reflection {
+  position: absolute;
+  bottom: -60%;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 70%);
+  transform: scaleY(-1);
+  opacity: 0.15;
+  pointer-events: none;
+  border-radius: 0 0 32px 32px;
+  z-index: 1;
+}
+
+.coverflow-controls {
   display: flex;
   align-items: center;
   gap: 24px;
-  margin-top: 20px;
+  margin-top: 8px;
 }
 
-.carousel-arrow {
+.coverflow-arrow {
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -625,19 +662,19 @@ main {
   font-weight: 700;
 }
 
-.carousel-arrow:hover {
+.coverflow-arrow:hover {
   background: var(--bg-elevated);
   border-color: rgba(0, 0, 0, 0.15);
   transform: scale(1.1);
   box-shadow: var(--shadow);
 }
 
-.carousel-dots {
+.coverflow-dots {
   display: flex;
   gap: 12px;
 }
 
-.carousel-dot {
+.coverflow-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -647,45 +684,108 @@ main {
   transition: all 0.4s ease;
 }
 
-.carousel-dot.active {
+.coverflow-dot.active {
   background: var(--fg);
   transform: scale(1.3);
 }
 
-.carousel-dot:hover {
+.coverflow-dot:hover {
   background: rgba(0, 0, 0, 0.35);
 }
 
-@media (max-width: 640px) {
-  .carousel-viewport {
-    height: 460px;
+@media (max-width: 768px) {
+  .coverflow-stage {
+    height: 480px;
+    perspective: 800px;
   }
 
-  .carousel-track-modern,
-  .carousel-card-modern {
+  .coverflow-track,
+  .coverflow-card {
     width: 300px;
     height: 400px;
   }
 
-  .carousel-card-visual {
+  .coverflow-card-visual {
     height: 200px;
   }
 
-  .carousel-card-img,
-  .carousel-card-fallback {
+  .coverflow-card-img,
+  .coverflow-card-fallback {
     width: 110px;
     height: 110px;
   }
 
-  .carousel-card-content {
+  .coverflow-card-content {
     padding: 24px;
   }
 
-  .carousel-card-title {
+  .coverflow-card-title {
     font-size: 1.3rem;
   }
 
-  .carousel-card-desc {
+  .coverflow-card-desc {
     font-size: 0.85rem;
   }
+}
+
+@media (max-width: 480px) {
+  .coverflow-stage {
+    height: 440px;
+  }
+
+  .coverflow-track,
+  .coverflow-card {
+    width: 260px;
+    height: 360px;
+  }
+
+  .coverflow-card-visual {
+    height: 170px;
+  }
+
+  .coverflow-card-img,
+  .coverflow-card-fallback {
+    width: 90px;
+    height: 90px;
+  }
+}
+
+/* Lemon 3D model next to location */
+.lemon-canvas-wrapper {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0.4));
+  box-shadow: inset 0 0 0 1px var(--glass-border), 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.lemon-canvas-wrapper:active {
+  cursor: grabbing;
+}
+
+.lemon-canvas-wrapper canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+@media (min-width: 768px) {
+  .lemon-canvas-wrapper {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+.lemon-fallback-emoji {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0.4));
 }

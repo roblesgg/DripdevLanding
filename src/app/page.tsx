@@ -6,6 +6,7 @@ import MeshGradientBackground from '@/components/MeshGradientBackground'
 import ProjectCarousel3D from '@/components/ProjectCarousel3D'
 import AnimatedSection from '@/components/AnimatedSection'
 import { SocialButtons } from '@/components/SocialLinks'
+import LemonModel from '@/components/LemonModel'
 
 export default function Home() {
   const [scrolled, setScrolled] = useState(false)
@@ -163,9 +164,19 @@ export default function Home() {
               <a href="mailto:Roblesgg16@gmail.com" className="contact-email">
                 Roblesgg16@gmail.com
               </a>
-              <p style={{ color: 'var(--fg-muted)', fontSize: '0.95rem' }}>
-                Sangonera la Seca, Murcia
-              </p>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  color: 'var(--fg-muted)',
+                  fontSize: '0.95rem',
+                }}
+              >
+                <span>Murcia</span>
+                <LemonModel />
+              </div>
             </div>
           </AnimatedSection>
 

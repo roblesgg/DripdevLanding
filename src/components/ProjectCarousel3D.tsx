@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import Image from 'next/image'
+import { useEffect, useRef, useState } from 'react'
+import { motion, useMotionValue, useTransform, PanInfo, MotionValue } from 'framer-motion'
 
 interface Project {
   title: string
   description: string
   image: string
-  fallbackIcon: React.ReactNode
+  fallbackIcon: string
   status: string
   link: string
+  isPlaceholder?: boolean
 }
 
 const projects: Project[] = [
@@ -25,151 +25,313 @@ const projects: Project[] = [
   {
     title: 'RDLC Auto Header',
     description: 'Extensión VS Code para automatizar encabezados en informes RDLC.',
-    image: '',
-    fallbackIcon: (
-      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
-        <polyline points="10 9 9 9 8 9" />
-      </svg>
-    ),
+    image: '/rdlc-icon.png',
+    fallbackIcon: '</>',
     status: 'Publicada',
     link: 'https://marketplace.visualstudio.com/items?itemName=b3325c32-f6ee-4fad-9894-9af09cca5946.rdlc-autoheader',
   },
+  {
+    title: 'Próximamente',
+    description: 'Nueva herramienta en desarrollo. Pronto más detalles.',
+    image: '',
+    fallbackIcon: '🔜',
+    status: 'En desarrollo',
+    link: '#proyectos',
+    isPlaceholder: true,
+  },
+  {
+    title: 'Próximamente',
+    description: 'Proyecto en fase inicial de diseño y arquitectura.',
+    image: '',
+    fallbackIcon: '🚀',
+    status: 'Planificación',
+    link: '#proyectos',
+    isPlaceholder: true,
+  },
 ]
 
-export default function ProjectCarousel3D() {
-  const [current, setCurrent] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
+const AUTO_SPEED = 0.035 // indices per second (~28s per card, ~114s full loop)
 
-  const slideNext = useCallback(() => {
-    setCurrent((prev) => (prev + 1) % projects.length)
-  }, [])
-
-  const slidePrev = useCallback(() => {
-    setCurrent((prev) => (prev - 1 + projects.length) % projects.length)
-  }, [])
+function useResponsiveSpacing() {
+  const [spacing, setSpacing] = useState(200)
+  const [rotate, setRotate] = useState(45)
 
   useEffect(() => {
-    if (isDragging) return
-    const interval = setInterval(() => {
-      slideNext()
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [isDragging, slideNext])
-
-  const handleDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
-    setIsDragging(false)
-    const threshold = 60
-    if (info.offset.x > threshold || info.velocity.x > 400) {
-      slidePrev()
-    } else if (info.offset.x < -threshold || info.velocity.x < -400) {
-      slideNext()
+    const update = () => {
+      const w = window.innerWidth
+      if (w < 400) {
+        setSpacing(105)
+        setRotate(35)
+      } else if (w < 640) {
+        setSpacing(130)
+        setRotate(40)
+      } else if (w < 768) {
+        setSpacing(160)
+        setRotate(42)
+      } else if (w < 1024) {
+        setSpacing(180)
+        setRotate(45)
+      } else {
+        setSpacing(210)
+        setRotate(48)
+      }
     }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  return { spacing, rotate }
+}
+
+function getShortestOffset(index: number, current: number, count: number) {
+  const diff = index - current
+  let offset = ((diff % count) + count) % count
+  if (offset > count / 2) offset -= count
+  return offset
+}
+
+function ProjectIcon({ src, fallback }: { src: string; fallback: string }) {
+  if (!src) {
+    return <div className="coverflow-card-fallback">{fallback}</div>
   }
+  return <img src={src} alt="" className="coverflow-card-img" />
+}
 
-  const getPosition = (index: number) => {
-    const diff = index - current
-    const normalizedDiff = ((diff + projects.length + Math.floor(projects.length / 2)) % projects.length) - Math.floor(projects.length / 2)
+function CarouselCard({
+  project,
+  index,
+  motionCurrent,
+  spacing,
+  rotate,
+}: {
+  project: Project
+  index: number
+  motionCurrent: MotionValue<number>
+  spacing: number
+  rotate: number
+}) {
+  const x = useTransform(motionCurrent, (v) => {
+    const offset = getShortestOffset(index, v, projects.length)
+    return offset * spacing
+  })
 
-    return {
-      x: normalizedDiff * 320,
-      scale: normalizedDiff === 0 ? 1 : 0.82,
-      opacity: normalizedDiff === 0 ? 1 : 0.35,
-      zIndex: normalizedDiff === 0 ? 10 : 5 - Math.abs(normalizedDiff),
-      blur: normalizedDiff === 0 ? 0 : 2,
-    }
+  const rotateY = useTransform(motionCurrent, (v) => {
+    const offset = getShortestOffset(index, v, projects.length)
+    return offset * rotate
+  })
+
+  const scale = useTransform(motionCurrent, (v) => {
+    const offset = Math.abs(getShortestOffset(index, v, projects.length))
+    return offset < 0.5 ? 1 : 0.78
+  })
+
+  const opacity = useTransform(motionCurrent, (v) => {
+    const offset = Math.abs(getShortestOffset(index, v, projects.length))
+    if (offset < 0.5) return 1
+    if (offset < 1.5) return 0.6
+    return 0.25
+  })
+
+  const filter = useTransform(motionCurrent, (v) => {
+    const offset = Math.abs(getShortestOffset(index, v, projects.length))
+    const blur = offset < 0.5 ? 0 : 3
+    const brightness = offset < 0.5 ? 1 : 0.92
+    return `blur(${blur}px) brightness(${brightness})`
+  })
+
+  const zIndex = useTransform(motionCurrent, (v) => {
+    const offset = Math.abs(getShortestOffset(index, v, projects.length))
+    return 10 - Math.round(offset)
+  })
+
+  if (project.isPlaceholder) {
+    return (
+      <motion.div
+        className="coverflow-card coverflow-card-placeholder"
+        style={{
+          x,
+          rotateY,
+          scale,
+          opacity,
+          filter,
+          zIndex,
+          transformStyle: 'preserve-3d',
+        }}
+      >
+        <div className="coverflow-card-inner">
+          <div className="coverflow-card-visual">
+            <div className="coverflow-card-fallback" style={{ display: 'flex' }}>
+              {project.fallbackIcon}
+            </div>
+            <span
+              className="coverflow-card-badge"
+              style={{
+                background: 'rgba(107, 114, 128, 0.1)',
+                color: '#6b7280',
+                borderColor: 'rgba(107, 114, 128, 0.2)',
+              }}
+            >
+              {project.status}
+            </span>
+          </div>
+          <div className="coverflow-card-content">
+            <h3 className="coverflow-card-title">{project.title}</h3>
+            <p className="coverflow-card-desc">{project.description}</p>
+          </div>
+        </div>
+        <div className="coverflow-card-reflection" />
+      </motion.div>
+    )
   }
 
   return (
-    <div className="carousel-section" id="proyectos">
-      <div className="carousel-viewport">
+    <motion.a
+      href={project.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="coverflow-card"
+      style={{
+        x,
+        rotateY,
+        scale,
+        opacity,
+        filter,
+        zIndex,
+        transformStyle: 'preserve-3d',
+      }}
+      whileHover={{ y: -6, scale: 1.02 }}
+    >
+      <div className="coverflow-card-inner">
+        <div className="coverflow-card-visual">
+          <ProjectIcon src={project.image} fallback={project.fallbackIcon} />
+          <span className="coverflow-card-badge">{project.status}</span>
+        </div>
+        <div className="coverflow-card-content">
+          <h3 className="coverflow-card-title">{project.title}</h3>
+          <p className="coverflow-card-desc">{project.description}</p>
+          <span className="coverflow-card-link">
+            Visitar <span>→</span>
+          </span>
+        </div>
+      </div>
+      <div className="coverflow-card-reflection" />
+    </motion.a>
+  )
+}
+
+export default function ProjectCarousel3D() {
+  const motionCurrent = useMotionValue(0)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartValue = useRef<number | null>(null)
+  const { spacing, rotate } = useResponsiveSpacing()
+
+  // Continuous slow auto-rotation
+  useEffect(() => {
+    if (isDragging) return
+    let raf: number
+    let lastTime = performance.now()
+
+    const tick = (now: number) => {
+      const delta = (now - lastTime) / 1000
+      lastTime = now
+      motionCurrent.set(motionCurrent.get() + delta * AUTO_SPEED)
+      raf = requestAnimationFrame(tick)
+    }
+
+    raf = requestAnimationFrame(tick)
+
+    const unsubscribe = motionCurrent.on('change', (v) => {
+      const idx = Math.round(v)
+      const normalized = ((idx % projects.length) + projects.length) % projects.length
+      setActiveIndex(normalized)
+    })
+
+    return () => {
+      cancelAnimationFrame(raf)
+      unsubscribe()
+    }
+  }, [isDragging, motionCurrent])
+
+  const handleDragStart = () => {
+    setIsDragging(true)
+    dragStartValue.current = motionCurrent.get()
+  }
+
+  const handleDrag = (_: unknown, info: PanInfo) => {
+    if (dragStartValue.current === null) return
+    const sensitivity = 0.004
+    motionCurrent.set(dragStartValue.current - info.offset.x * sensitivity)
+  }
+
+  const handleDragEnd = () => {
+    dragStartValue.current = null
+    setIsDragging(false)
+  }
+
+  const goTo = (index: number) => {
+    const current = motionCurrent.get()
+    const currentNormalized = ((Math.round(current) % projects.length) + projects.length) % projects.length
+    let diff = index - currentNormalized
+    if (diff > projects.length / 2) diff -= projects.length
+    if (diff < -projects.length / 2) diff += projects.length
+    motionCurrent.set(current + diff)
+  }
+
+  const slideNext = () => {
+    motionCurrent.set(motionCurrent.get() + 1)
+  }
+
+  const slidePrev = () => {
+    motionCurrent.set(motionCurrent.get() - 1)
+  }
+
+  return (
+    <div className="coverflow-section" id="proyectos">
+      <div className="coverflow-stage">
         <motion.div
-          className="carousel-track-modern"
+          className="coverflow-track"
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.08}
-          onDragStart={() => setIsDragging(true)}
+          dragElastic={0.02}
+          onDragStart={handleDragStart}
+          onDrag={handleDrag}
           onDragEnd={handleDragEnd}
         >
-          <AnimatePresence mode="popLayout">
-            {projects.map((project, index) => {
-              const pos = getPosition(index)
-              const isActive = index === current
-
-              return (
-                <motion.a
-                  key={project.title}
-                  href={project.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`carousel-card-modern ${isActive ? 'active' : ''}`}
-                  initial={false}
-                  animate={{
-                    x: pos.x,
-                    scale: pos.scale,
-                    opacity: pos.opacity,
-                    zIndex: pos.zIndex,
-                    filter: `blur(${pos.blur}px)`,
-                  }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 120,
-                    damping: 22,
-                    mass: 1,
-                  }}
-                  whileHover={isActive ? { y: -8, scale: 1.02 } : {}}
-                >
-                  <div className="carousel-card-visual">
-                    {project.image ? (
-                      <Image
-                        src={project.image}
-                        alt={project.title}
-                        width={140}
-                        height={140}
-                        className="carousel-card-img"
-                      />
-                    ) : (
-                      <div className="carousel-card-fallback">{project.fallbackIcon}</div>
-                    )}
-                    <span className="carousel-card-badge">{project.status}</span>
-                  </div>
-                  <div className="carousel-card-content">
-                    <h3 className="carousel-card-title">{project.title}</h3>
-                    <p className="carousel-card-desc">{project.description}</p>
-                    <span className="carousel-card-link">
-                      Visitar proyecto <span>→</span>
-                    </span>
-                  </div>
-                </motion.a>
-              )
-            })}
-          </AnimatePresence>
+          {projects.map((project, index) => (
+            <CarouselCard
+              key={`${project.title}-${index}`}
+              project={project}
+              index={index}
+              motionCurrent={motionCurrent}
+              spacing={spacing}
+              rotate={rotate}
+            />
+          ))}
         </motion.div>
       </div>
 
-      <div className="carousel-controls">
+      <div className="coverflow-controls">
         <button
-          className="carousel-arrow"
+          className="coverflow-arrow"
           onClick={slidePrev}
           aria-label="Proyecto anterior"
         >
           ←
         </button>
-        <div className="carousel-dots">
+        <div className="coverflow-dots">
           {projects.map((_, index) => (
             <button
               key={index}
-              className={`carousel-dot ${index === current ? 'active' : ''}`}
-              onClick={() => setCurrent(index)}
+              className={`coverflow-dot ${activeIndex === index ? 'active' : ''}`}
+              onClick={() => goTo(index)}
               aria-label={`Ir al proyecto ${index + 1}`}
             />
           ))}
         </div>
         <button
-          className="carousel-arrow"
+          className="coverflow-arrow"
           onClick={slideNext}
           aria-label="Proyecto siguiente"
         >
