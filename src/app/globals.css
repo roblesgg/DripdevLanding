@@ -455,140 +455,139 @@ main {
   font-weight: 500;
 }
 
-/* 3D Carousel */
+
+/* Modern Card Carousel */
 .carousel-section {
   position: relative;
   width: 100%;
-  padding: 20px 0 60px;
+  padding: 40px 0 60px;
   z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.carousel-stage {
-  perspective: 1200px;
+.carousel-viewport {
   width: 100%;
-  max-width: 400px;
-  height: 420px;
+  max-width: 900px;
+  height: 520px;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
   position: relative;
 }
 
-.carousel-ring {
+.carousel-track-modern {
   position: relative;
-  width: 300px;
-  height: 340px;
-  transform-style: preserve-3d;
+  width: 360px;
+  height: 460px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: grab;
 }
 
-.carousel-ring:active {
+.carousel-track-modern:active {
   cursor: grabbing;
 }
 
-.carousel-item {
+.carousel-card-modern {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 300px;
-  height: 340px;
+  width: 360px;
+  height: 460px;
   text-decoration: none;
   color: inherit;
-  transform-style: preserve-3d;
-  transition: opacity 0.6s ease, filter 0.6s ease;
-  opacity: 0.5;
-  filter: blur(1px) brightness(0.92);
-}
-
-.carousel-item.active {
-  opacity: 1;
-  filter: blur(0) brightness(1);
-}
-
-.carousel-item-inner {
-  width: 100%;
-  height: 100%;
+  border-radius: 32px;
   background: var(--glass);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  padding: 36px 28px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
   backdrop-filter: blur(24px) saturate(180%);
   box-shadow: var(--shadow);
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.carousel-item:hover .carousel-item-inner {
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-5px);
-}
-
-.carousel-item-image {
-  width: 110px;
-  height: 110px;
-  border-radius: 26px;
   overflow: hidden;
-  margin-bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.4s ease;
+}
+
+.carousel-card-modern.active {
+  box-shadow: var(--shadow-lg);
+}
+
+.carousel-card-modern:hover {
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 32px 80px -20px rgba(0, 0, 0, 0.1), 0 12px 40px -10px rgba(0, 0, 0, 0.05);
+}
+
+.carousel-card-visual {
+  position: relative;
+  height: 260px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(245,247,250,0.8) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.carousel-card-img {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 28px;
+  box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.12);
+}
+
+.carousel-card-fallback {
+  width: 140px;
+  height: 140px;
+  border-radius: 28px;
   background: rgba(255, 255, 255, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--glass-border);
-}
-
-.carousel-item-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.carousel-item-fallback {
   color: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.1);
 }
 
-.carousel-item-status {
-  display: inline-block;
-  padding: 6px 16px;
+.carousel-card-badge {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 8px 16px;
   border-radius: 100px;
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 16px;
+  letter-spacing: 0.06em;
   background: rgba(34, 197, 94, 0.1);
   color: #16a34a;
   border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
-.carousel-item-title {
-  font-size: 1.5rem;
+.carousel-card-content {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.carousel-card-title {
+  font-size: 1.6rem;
   font-weight: 900;
   margin-bottom: 10px;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   color: var(--fg);
 }
 
-.carousel-item-desc {
-  font-size: 0.9rem;
+.carousel-card-desc {
+  font-size: 0.95rem;
   color: var(--fg-secondary);
   line-height: 1.55;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   flex: 1;
   font-weight: 500;
 }
 
-.carousel-item-cta {
+.carousel-card-link {
   color: var(--accent);
   font-weight: 700;
   font-size: 0.9rem;
@@ -598,48 +597,20 @@ main {
   transition: gap 0.3s ease;
 }
 
-.carousel-item:hover .carousel-item-cta {
+.carousel-card-modern:hover .carousel-card-link {
   gap: 10px;
-}
-
-.carousel-item-reflection {
-  position: absolute;
-  bottom: -60px;
-  left: 10%;
-  width: 80%;
-  height: 60px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.04), transparent);
-  border-radius: 50%;
-  filter: blur(15px);
-  transform: rotateX(70deg);
-  opacity: 0.4;
-  pointer-events: none;
-}
-
-.carousel-floor {
-  position: absolute;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 300px;
-  height: 30px;
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0.04) 0%, transparent 70%);
-  border-radius: 50%;
-  filter: blur(20px);
-  pointer-events: none;
-  z-index: -1;
 }
 
 .carousel-controls {
   display: flex;
   align-items: center;
   gap: 24px;
-  margin-top: 10px;
+  margin-top: 20px;
 }
 
 .carousel-arrow {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: 1px solid var(--glass-border);
   background: var(--glass);
@@ -671,7 +642,7 @@ main {
   height: 10px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.12);
   cursor: pointer;
   transition: all 0.4s ease;
 }
@@ -686,31 +657,35 @@ main {
 }
 
 @media (max-width: 640px) {
-  .carousel-stage {
-    height: 380px;
+  .carousel-viewport {
+    height: 460px;
   }
 
-  .carousel-ring,
-  .carousel-item {
-    width: 260px;
-    height: 300px;
+  .carousel-track-modern,
+  .carousel-card-modern {
+    width: 300px;
+    height: 400px;
   }
 
-  .carousel-item-inner {
-    padding: 28px 22px;
-    border-radius: 24px;
+  .carousel-card-visual {
+    height: 200px;
   }
 
-  .carousel-item-image {
-    width: 90px;
-    height: 90px;
+  .carousel-card-img,
+  .carousel-card-fallback {
+    width: 110px;
+    height: 110px;
   }
 
-  .carousel-item-title {
-    font-size: 1.25rem;
+  .carousel-card-content {
+    padding: 24px;
   }
 
-  .carousel-item-desc {
-    font-size: 0.8rem;
+  .carousel-card-title {
+    font-size: 1.3rem;
+  }
+
+  .carousel-card-desc {
+    font-size: 0.85rem;
   }
 }

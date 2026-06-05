@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 
 interface Project {
@@ -27,7 +27,7 @@ const projects: Project[] = [
     description: 'Extensión VS Code para automatizar encabezados en informes RDLC.',
     image: '',
     fallbackIcon: (
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <polyline points="14 2 14 8 20 8" />
         <line x1="16" y1="13" x2="8" y2="13" />
@@ -44,9 +44,6 @@ export default function ProjectCarousel3D() {
   const [current, setCurrent] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
 
-  const angleStep = 360 / projects.length
-  const radius = 320
-
   const slideNext = useCallback(() => {
     setCurrent((prev) => (prev + 1) % projects.length)
   }, [])
@@ -59,83 +56,99 @@ export default function ProjectCarousel3D() {
     if (isDragging) return
     const interval = setInterval(() => {
       slideNext()
-    }, 6000)
+    }, 5000)
     return () => clearInterval(interval)
   }, [isDragging, slideNext])
 
   const handleDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
     setIsDragging(false)
-    const threshold = 40
-    if (info.offset.x > threshold || info.velocity.x > 300) {
+    const threshold = 60
+    if (info.offset.x > threshold || info.velocity.x > 400) {
       slidePrev()
-    } else if (info.offset.x < -threshold || info.velocity.x < -300) {
+    } else if (info.offset.x < -threshold || info.velocity.x < -400) {
       slideNext()
+    }
+  }
+
+  const getPosition = (index: number) => {
+    const diff = index - current
+    const normalizedDiff = ((diff + projects.length + Math.floor(projects.length / 2)) % projects.length) - Math.floor(projects.length / 2)
+
+    return {
+      x: normalizedDiff * 320,
+      scale: normalizedDiff === 0 ? 1 : 0.82,
+      opacity: normalizedDiff === 0 ? 1 : 0.35,
+      zIndex: normalizedDiff === 0 ? 10 : 5 - Math.abs(normalizedDiff),
+      blur: normalizedDiff === 0 ? 0 : 2,
     }
   }
 
   return (
     <div className="carousel-section" id="proyectos">
-      <div className="carousel-stage">
+      <div className="carousel-viewport">
         <motion.div
-          className="carousel-ring"
+          className="carousel-track-modern"
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.05}
+          dragElastic={0.08}
           onDragStart={() => setIsDragging(true)}
           onDragEnd={handleDragEnd}
-          animate={{ rotateY: -current * angleStep }}
-          transition={{
-            type: 'spring',
-            stiffness: 80,
-            damping: 20,
-            mass: 1.2,
-          }}
-          style={{ transformStyle: 'preserve-3d' }}
         >
-          {projects.map((project, index) => {
-            const isActive = index === current
-            const rotation = index * angleStep
+          <AnimatePresence mode="popLayout">
+            {projects.map((project, index) => {
+              const pos = getPosition(index)
+              const isActive = index === current
 
-            return (
-              <a
-                key={project.title}
-                href={project.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`carousel-item ${isActive ? 'active' : ''}`}
-                style={{
-                  transform: `rotateY(${rotation}deg) translateZ(${radius}px)`,
-                }}
-              >
-                <div className="carousel-item-inner">
-                  <div className="carousel-item-image">
+              return (
+                <motion.a
+                  key={project.title}
+                  href={project.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`carousel-card-modern ${isActive ? 'active' : ''}`}
+                  initial={false}
+                  animate={{
+                    x: pos.x,
+                    scale: pos.scale,
+                    opacity: pos.opacity,
+                    zIndex: pos.zIndex,
+                    filter: `blur(${pos.blur}px)`,
+                  }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 120,
+                    damping: 22,
+                    mass: 1,
+                  }}
+                  whileHover={isActive ? { y: -8, scale: 1.02 } : {}}
+                >
+                  <div className="carousel-card-visual">
                     {project.image ? (
                       <Image
                         src={project.image}
                         alt={project.title}
-                        width={110}
-                        height={110}
-                        className="carousel-item-img"
+                        width={140}
+                        height={140}
+                        className="carousel-card-img"
                       />
                     ) : (
-                      <div className="carousel-item-fallback">{project.fallbackIcon}</div>
+                      <div className="carousel-card-fallback">{project.fallbackIcon}</div>
                     )}
+                    <span className="carousel-card-badge">{project.status}</span>
                   </div>
-                  <span className="carousel-item-status">{project.status}</span>
-                  <h3 className="carousel-item-title">{project.title}</h3>
-                  <p className="carousel-item-desc">{project.description}</p>
-                  <span className="carousel-item-cta">
-                    Visitar <span>→</span>
-                  </span>
-                </div>
-                <div className="carousel-item-reflection" />
-              </a>
-            )
-          })}
+                  <div className="carousel-card-content">
+                    <h3 className="carousel-card-title">{project.title}</h3>
+                    <p className="carousel-card-desc">{project.description}</p>
+                    <span className="carousel-card-link">
+                      Visitar proyecto <span>→</span>
+                    </span>
+                  </div>
+                </motion.a>
+              )
+            })}
+          </AnimatePresence>
         </motion.div>
       </div>
-
-      <div className="carousel-floor" />
 
       <div className="carousel-controls">
         <button
