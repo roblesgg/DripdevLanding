@@ -9,7 +9,7 @@ import { SocialButtons, SocialIcons } from '@/components/SocialLinks'
 const projects = [
   {
     title: 'VeoVeo',
-    description: 'La app definitiva para descubrir películas y hacer match con tus amigos. Decidir qué ver nunca fue tan fácil.',
+    description: 'App social para descubrir películas y hacer match con amigos. Disponible en web y próximamente en iOS/Android.',
     icon: '🍿',
     status: 'live',
     statusText: 'En vivo',
@@ -17,7 +17,7 @@ const projects = [
   },
   {
     title: 'RDLC Auto Header',
-    description: 'Extensión de Visual Studio Code para automatizar encabezados en informes RDLC. Ahorra tiempo en cada reporte.',
+    description: 'Extensión de Visual Studio Code que automatiza encabezados en informes RDLC, ahorrando tiempo en cada reporte.',
     icon: '🧩',
     status: 'live',
     statusText: 'Publicada',
@@ -65,7 +65,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          Hola, soy
+          Desarrollo de aplicaciones multiplataforma
         </motion.p>
 
         <motion.h1
@@ -74,7 +74,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <span className="gradient">Álvaro Robles González</span>
+          <span className="gradient">DripDev</span>
         </motion.h1>
 
         <motion.p
@@ -83,8 +83,8 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
-          Desarrollador de aplicaciones móviles y web. Fundador de{' '}
-          <strong style={{ color: 'var(--accent)' }}>DripDev</strong>.
+          Apps con código limpio, diseño cuidado y propósito real.{' '}
+          <strong style={{ color: 'var(--accent)' }}>De la idea al producto.</strong>
         </motion.p>
 
         <motion.div
@@ -104,7 +104,7 @@ export default function Home() {
         <SocialButtons />
 
         <motion.a
-          href="#sobre-mi"
+          href="#dripdev"
           className="scroll-hint"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -114,34 +114,35 @@ export default function Home() {
         </motion.a>
       </section>
 
-      <section id="sobre-mi" className="section">
+      <section id="dripdev" className="section">
         <div className="container">
           <AnimatedSection>
-            <h2 className="section-title">Sobre mí</h2>
+            <h2 className="section-title">Qué es DripDev</h2>
           </AnimatedSection>
           <AnimatedSection delay={0.1}>
             <p className="section-subtitle">
-              Apasionado por transformar ideas en aplicaciones reales que la gente use día a día.
+              Un pequeño estudio de desarrollo enfocado en construir aplicaciones útiles, bien
+              estructuradas y con atención al detalle.
             </p>
           </AnimatedSection>
 
           <div className="about-grid">
             <AnimatedSection delay={0.2} className="about-text">
               <p>
-                Me llamo <span className="about-highlight">Álvaro Robles González</span> y soy
-                desarrollador de aplicaciones móviles y web. Trabajo principalmente con{' '}
-                <span className="about-highlight">React Native</span>,{' '}
-                <span className="about-highlight">Next.js</span> y{' '}
-                <span className="about-highlight">Firebase</span>.
+                En <span className="about-highlight">DripDev</span> no creemos en el código por
+                encargo. Nos importa la organización del trabajo, el diseño limpio y entregar
+                productos que aporten valor real.
               </p>
               <p>
-                Con <strong>DripDev</strong> quiero crear apps que resuelvan problemas cotidianos
-                de forma sencilla y con buen diseño. Mi primer proyecto público es{' '}
-                <strong>VeoVeo</strong>, una app social para descubrir películas con amigos.
+                Trabajamos con <span className="about-highlight">React Native</span>,{' '}
+                <span className="about-highlight">Next.js</span>,{' '}
+                <span className="about-highlight">Firebase</span> y herramientas profesionales,
+                aplicando metodologías ágiles como <strong>Scrum</strong> para mantener el ritmo y la
+                calidad.
               </p>
               <p>
-                Me encanta aprender nuevas tecnologías, iterar rápido y construir productos que
-                aporten valor real.
+                Cada proyecto empieza con una necesidad real: una app que facilite una decisión, una
+                extensión que ahorre tiempo, una experiencia que conecte a las personas.
               </p>
             </AnimatedSection>
 
@@ -165,9 +166,7 @@ export default function Home() {
             <h2 className="section-title">Proyectos</h2>
           </AnimatedSection>
           <AnimatedSection delay={0.1}>
-            <p className="section-subtitle">
-              Estas son las apps y proyectos en los que estoy trabajando actualmente.
-            </p>
+            <p className="section-subtitle">Apps y herramientas que hemos publicado hasta ahora.</p>
           </AnimatedSection>
 
           <div className="projects-grid">
@@ -196,21 +195,108 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="contacto" className="section contact-section">
+      <section id="fundador" className="section">
         <div className="container">
           <AnimatedSection>
-            <h2 className="section-title">¿Trabajamos juntos?</h2>
+            <h2 className="section-title">Quién hay detrás</h2>
           </AnimatedSection>
           <AnimatedSection delay={0.1}>
             <p className="section-subtitle">
-              Si tienes una idea, quieres colaborar o simplemente charlar sobre tecnología, escríbeme.
+              DripDev nace de la mano de una persona con actitud senior y sed de aprender.
             </p>
           </AnimatedSection>
-          <AnimatedSection delay={0.2}>
-            <a href="mailto:Alvaro@dripdev.dev" className="contact-email">
-              Alvaro@dripdev.dev
-            </a>
+
+          <div className="about-grid">
+            <AnimatedSection delay={0.2} className="about-text">
+              <p>
+                Me llamo <span className="about-highlight">Álvaro Robles González</span>, tengo 23
+                años y estoy terminando el Grado Superior en{' '}
+                <strong>Desarrollo de Aplicaciones Multiplataforma</strong>.
+              </p>
+              <p>
+                Aunque me inicio como perfil junior en programación, llevo trabajando desde los 16
+                años. Siete años en hostelería y logística me han enseñado disciplina, trabajo bajo
+                presión y lo que significa que un equipo dependa de ti.
+              </p>
+              <p>
+                Dispongo de vehículo propio, carnet de conducir tipo B e incorporación inmediata.
+                Estoy ubicado en <strong>Sangonera la Seca, Murcia</strong>, pero puedo desplazarme
+                sin problema.
+              </p>
+              <p>
+                Me apasiona el orden, las metodologías ágiles y construir código que sea mantenible.
+                No quiero solo &quot;picar código&quot;, sino hacerlo bien.
+              </p>
+            </AnimatedSection>
+
+            <AnimatedSection delay={0.3}>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-number">23</div>
+                  <div className="stat-label">Años</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-number">7+</div>
+                  <div className="stat-label">Años trabajando</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-number">DAM</div>
+                  <div className="stat-label">Grado Superior</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-number">B</div>
+                  <div className="stat-label">Carnet + vehículo</div>
+                </div>
+              </div>
+            </AnimatedSection>
+          </div>
+        </div>
+      </section>
+
+      <section id="contacto" className="section contact-section">
+        <div className="container">
+          <AnimatedSection>
+            <h2 className="section-title">¿Hablamos?</h2>
           </AnimatedSection>
+          <AnimatedSection delay={0.1}>
+            <p className="section-subtitle">
+              Si tienes una idea, una propuesta de trabajo o simplemente quieres charlar sobre
+              tecnología, aquí me tienes.
+            </p>
+          </AnimatedSection>
+
+          <AnimatedSection delay={0.2}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                alignItems: 'center',
+                marginBottom: '40px',
+              }}
+            >
+              <a href="mailto:Roblesgg16@gmail.com" className="contact-email">
+                Roblesgg16@gmail.com
+              </a>
+              <a
+                href="tel:+34628751253"
+                style={{
+                  fontSize: '1.3rem',
+                  color: 'var(--fg-muted)',
+                  textDecoration: 'none',
+                  transition: 'color 0.3s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--fg-muted)')}
+              >
+                628 75 12 53
+              </a>
+              <p style={{ color: 'var(--fg-muted)', fontSize: '0.95rem' }}>
+                Sangonera la Seca, Murcia
+              </p>
+            </div>
+          </AnimatedSection>
+
           <AnimatedSection delay={0.3}>
             <SocialButtons />
           </AnimatedSection>
@@ -220,17 +306,27 @@ export default function Home() {
       <footer className="footer">
         <div className="container">
           <div className="footer-socials">
-            <a href="https://www.linkedin.com/in/%C3%A1lvaro-robles-gonz%C3%A1lez-bbb017240/" target="_blank" rel="noopener noreferrer" className="footer-link">
+            <a
+              href="https://www.linkedin.com/in/%C3%A1lvaro-robles-gonz%C3%A1lez-bbb017240/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer-link"
+            >
               LinkedIn
             </a>
-            <a href="https://github.com/roblesgg" target="_blank" rel="noopener noreferrer" className="footer-link">
+            <a
+              href="https://github.com/roblesgg"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer-link"
+            >
               GitHub
             </a>
-            <a href="mailto:Alvaro@dripdev.dev" className="footer-link">
+            <a href="mailto:Roblesgg16@gmail.com" className="footer-link">
               Email
             </a>
           </div>
-          <p>© {new Date().getFullYear()} Álvaro Robles González • DripDev</p>
+          <p>© {new Date().getFullYear()} DripDev • Álvaro Robles González</p>
         </div>
       </footer>
     </main>
