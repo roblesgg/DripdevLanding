@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, PanInfo } from 'framer-motion'
 
 interface Project {
@@ -32,7 +32,7 @@ const projects: Project[] = [
 ]
 
 const AUTO_INTERVAL = 6000 // ms between slides
-const TRANSITION_DURATION = 2.8 // seconds
+const PAUSE_AFTER_INTERACTION = 10000 // ms
 
 function getOffset(cardIndex: number, activeIndex: number, count: number) {
   const diff = cardIndex - activeIndex
@@ -98,14 +98,24 @@ function getVariant(offset: number, spacing: number, rotate: number) {
 export default function ProjectCarousel3D() {
   const [active, setActive] = useState(0)
   const { spacing, rotate } = useCardSpacing()
+  const lastInteraction = useRef<number>(0)
+
+  const markInteraction = () => {
+    lastInteraction.current = Date.now()
+  }
 
   // Auto-advance
   useEffect(() => {
     const timer = setInterval(() => {
+      if (Date.now() - lastInteraction.current < PAUSE_AFTER_INTERACTION) return
       setActive((prev) => (prev + 1) % projects.length)
     }, AUTO_INTERVAL)
     return () => clearInterval(timer)
   }, [])
+
+  const handleDragStart = () => {
+    markInteraction()
+  }
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.x < -80 || info.velocity.x < -300) {
@@ -115,9 +125,18 @@ export default function ProjectCarousel3D() {
     }
   }
 
-  const slideNext = () => setActive((prev) => (prev + 1) % projects.length)
-  const slidePrev = () => setActive((prev) => (prev - 1 + projects.length) % projects.length)
-  const goTo = (index: number) => setActive(index)
+  const slideNext = () => {
+    markInteraction()
+    setActive((prev) => (prev + 1) % projects.length)
+  }
+  const slidePrev = () => {
+    markInteraction()
+    setActive((prev) => (prev - 1 + projects.length) % projects.length)
+  }
+  const goTo = (index: number) => {
+    markInteraction()
+    setActive(index)
+  }
 
   return (
     <div className="coverflow-section" id="proyectos">
@@ -127,6 +146,7 @@ export default function ProjectCarousel3D() {
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.08}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
           {projects.map((project, index) => {
