@@ -7,9 +7,10 @@ interface Project {
   title: string
   description: string
   image: string
-  fallbackIcon: string
   status: string
+  statusType: 'live' | 'published'
   link: string
+  accent: string
 }
 
 const projects: Project[] = [
@@ -17,22 +18,24 @@ const projects: Project[] = [
     title: 'VeoVeo',
     description: 'App social para descubrir películas y hacer match con amigos.',
     image: '/veoveo-icon.png',
-    fallbackIcon: '🍿',
     status: 'En vivo',
+    statusType: 'live',
     link: 'https://veoveo.dripdev.dev/descargar',
+    accent: '#6366f1',
   },
   {
     title: 'RDLC Auto Header',
     description: 'Extensión VS Code para automatizar encabezados en informes RDLC.',
     image: '/rdlc-icon.png',
-    fallbackIcon: '</>',
     status: 'Publicada',
+    statusType: 'published',
     link: 'https://marketplace.visualstudio.com/items?itemName=b3325c32-f6ee-4fad-9894-9af09cca5946.rdlc-autoheader',
+    accent: '#0ea5e9',
   },
 ]
 
-const AUTO_INTERVAL = 6000 // ms between slides
-const PAUSE_AFTER_INTERACTION = 10000 // ms
+const AUTO_INTERVAL = 6000
+const PAUSE_AFTER_INTERACTION = 10000
 
 function getOffset(cardIndex: number, activeIndex: number, count: number) {
   const diff = cardIndex - activeIndex
@@ -43,27 +46,16 @@ function getOffset(cardIndex: number, activeIndex: number, count: number) {
 
 function useCardSpacing() {
   const [spacing, setSpacing] = useState(320)
-  const [rotate, setRotate] = useState(45)
+  const [rotate, setRotate] = useState(48)
 
   useEffect(() => {
     const update = () => {
       const w = window.innerWidth
-      if (w < 400) {
-        setSpacing(160)
-        setRotate(35)
-      } else if (w < 640) {
-        setSpacing(220)
-        setRotate(40)
-      } else if (w < 768) {
-        setSpacing(280)
-        setRotate(42)
-      } else if (w < 1024) {
-        setSpacing(340)
-        setRotate(45)
-      } else {
-        setSpacing(400)
-        setRotate(48)
-      }
+      if (w < 400) { setSpacing(170); setRotate(35) }
+      else if (w < 640) { setSpacing(240); setRotate(42) }
+      else if (w < 768) { setSpacing(300); setRotate(45) }
+      else if (w < 1024) { setSpacing(360); setRotate(48) }
+      else { setSpacing(430); setRotate(52) }
     }
     update()
     window.addEventListener('resize', update)
@@ -75,23 +67,16 @@ function useCardSpacing() {
 
 function getVariant(offset: number, spacing: number, rotate: number) {
   if (offset === 0) {
-    return {
-      x: 0,
-      rotateY: 0,
-      scale: 1,
-      opacity: 1,
-      zIndex: 10,
-      filter: 'blur(0px) brightness(1)',
-    }
+    return { x: 0, rotateY: 0, scale: 1, opacity: 1, zIndex: 10, filter: 'blur(0px) brightness(1)' }
   }
   const dir = offset > 0 ? -1 : 1
   return {
     x: offset * spacing,
     rotateY: dir * rotate,
-    scale: 0.72,
-    opacity: 0.45,
+    scale: 0.65,
+    opacity: 0.38,
     zIndex: 10 - Math.abs(offset),
-    filter: 'blur(4px) brightness(0.9)',
+    filter: 'blur(8px) brightness(0.75)',
   }
 }
 
@@ -99,12 +84,8 @@ export default function ProjectCarousel3D() {
   const [active, setActive] = useState(0)
   const { spacing, rotate } = useCardSpacing()
   const lastInteraction = useRef<number>(0)
+  const markInteraction = () => { lastInteraction.current = Date.now() }
 
-  const markInteraction = () => {
-    lastInteraction.current = Date.now()
-  }
-
-  // Auto-advance
   useEffect(() => {
     const timer = setInterval(() => {
       if (Date.now() - lastInteraction.current < PAUSE_AFTER_INTERACTION) return
@@ -113,40 +94,35 @@ export default function ProjectCarousel3D() {
     return () => clearInterval(timer)
   }, [])
 
-  const handleDragStart = () => {
-    markInteraction()
-  }
-
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.x < -80 || info.velocity.x < -300) {
-      setActive((prev) => (prev + 1) % projects.length)
-    } else if (info.offset.x > 80 || info.velocity.x > 300) {
-      setActive((prev) => (prev - 1 + projects.length) % projects.length)
-    }
+    markInteraction()
+    if (info.offset.x < -80 || info.velocity.x < -300) setActive((p) => (p + 1) % projects.length)
+    else if (info.offset.x > 80 || info.velocity.x > 300) setActive((p) => (p - 1 + projects.length) % projects.length)
   }
 
-  const slideNext = () => {
-    markInteraction()
-    setActive((prev) => (prev + 1) % projects.length)
-  }
-  const slidePrev = () => {
-    markInteraction()
-    setActive((prev) => (prev - 1 + projects.length) % projects.length)
-  }
-  const goTo = (index: number) => {
-    markInteraction()
-    setActive(index)
-  }
+  const slideNext = () => { markInteraction(); setActive((p) => (p + 1) % projects.length) }
+  const slidePrev = () => { markInteraction(); setActive((p) => (p - 1 + projects.length) % projects.length) }
+  const goTo = (i: number) => { markInteraction(); setActive(i) }
+
+  const current = projects[active]
 
   return (
     <div className="coverflow-section" id="proyectos">
+
+      {/* Ambient glow that follows the active project color */}
+      <motion.div
+        className="coverflow-glow"
+        animate={{ background: `radial-gradient(ellipse at 50% 60%, ${current.accent}28 0%, transparent 68%)` }}
+        transition={{ duration: 1, ease: 'easeInOut' }}
+      />
+
       <div className="coverflow-stage">
         <motion.div
           className="coverflow-track"
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.08}
-          onDragStart={handleDragStart}
+          onDragStart={markInteraction}
           onDragEnd={handleDragEnd}
         >
           {projects.map((project, index) => {
@@ -160,58 +136,92 @@ export default function ProjectCarousel3D() {
                 href={project.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="coverflow-card"
+                className={`coverflow-card${isCenter ? ' active' : ''}`}
                 initial={false}
                 animate={variant}
-                transition={{
-                  type: 'spring',
-                  stiffness: 60,
-                  damping: 22,
-                  mass: 1.2,
-                }}
-                whileHover={isCenter ? { y: -6, scale: 1.02 } : {}}
+                transition={{ type: 'spring', stiffness: 52, damping: 19, mass: 1.1 }}
+                whileHover={isCenter ? { y: -10, scale: 1.03 } : {}}
                 style={{ transformStyle: 'preserve-3d' }}
               >
+                {/* Liquid glass layers */}
+                <div className="lg-effect" />
+                <div
+                  className="lg-tint"
+                  style={{
+                    background: isCenter
+                      ? `linear-gradient(155deg, ${project.accent}1a 0%, rgba(255,255,255,0.52) 55%)`
+                      : 'rgba(255,255,255,0.48)',
+                  }}
+                />
+                <div className="lg-shine" />
+
+                {/* Card content */}
                 <div className="coverflow-card-inner">
-                  <div className="coverflow-card-visual">
-                    <img src={project.image} alt="" className="coverflow-card-img" />
-                    <div className="coverflow-card-fallback" style={{ display: 'none' }}>
-                      {project.fallbackIcon}
-                    </div>
-                    <span className="coverflow-card-badge">{project.status}</span>
+
+                  {/* Visual area */}
+                  <div
+                    className="coverflow-card-visual"
+                    style={{ background: `linear-gradient(145deg, ${project.accent}1c 0%, ${project.accent}08 100%)` }}
+                  >
+                    <img
+                      src={project.image}
+                      alt={project.title}
+                      className="coverflow-card-img"
+                    />
+
+                    {/* Glow ring under icon when active */}
+                    {isCenter && (
+                      <motion.div
+                        className="card-icon-glow"
+                        style={{ background: project.accent }}
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 0.18, scale: 1 }}
+                        transition={{ duration: 0.6 }}
+                      />
+                    )}
+
+                    <span className={`coverflow-card-badge badge-${project.statusType}`}>
+                      <span className="badge-dot" />
+                      {project.status}
+                    </span>
                   </div>
+
+                  {/* Text area */}
                   <div className="coverflow-card-content">
                     <h3 className="coverflow-card-title">{project.title}</h3>
                     <p className="coverflow-card-desc">{project.description}</p>
-                    <span className="coverflow-card-link">
-                      Visitar <span>→</span>
+                    <span className="coverflow-card-link" style={{ color: project.accent }}>
+                      Ver proyecto <span className="link-arrow">→</span>
                     </span>
                   </div>
                 </div>
-                <div className="coverflow-card-reflection" />
               </motion.a>
             )
           })}
         </motion.div>
       </div>
 
+      {/* Controls */}
       <div className="coverflow-controls">
-        <button className="coverflow-arrow" onClick={slidePrev} aria-label="Proyecto anterior">
-          ←
-        </button>
+        <button className="coverflow-arrow" onClick={slidePrev} aria-label="Anterior">‹</button>
+
         <div className="coverflow-dots">
-          {projects.map((_, index) => (
-            <button
-              key={index}
-              className={`coverflow-dot ${active === index ? 'active' : ''}`}
-              onClick={() => goTo(index)}
-              aria-label={`Ir al proyecto ${index + 1}`}
+          {projects.map((_, i) => (
+            <motion.button
+              key={i}
+              className={`coverflow-dot${active === i ? ' active' : ''}`}
+              onClick={() => goTo(i)}
+              animate={{
+                width: active === i ? 28 : 10,
+                background: active === i ? current.accent : 'rgba(0,0,0,0.14)',
+              }}
+              transition={{ duration: 0.35, ease: 'easeInOut' }}
+              aria-label={`Ir a ${projects[i].title}`}
             />
           ))}
         </div>
-        <button className="coverflow-arrow" onClick={slideNext} aria-label="Proyecto siguiente">
-          →
-        </button>
+
+        <button className="coverflow-arrow" onClick={slideNext} aria-label="Siguiente">›</button>
       </div>
     </div>
   )
