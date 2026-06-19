@@ -157,7 +157,9 @@ export default function Home() {
               <div className="lg-tint" style={{ background: 'linear-gradient(155deg, rgba(99,102,241,0.1) 0%, rgba(255,255,255,0.58) 60%)' }} />
               <div className="lg-shine" />
               <div className="contact-card-inner">
-                <div className="contact-avatar">A</div>
+                <div className="contact-avatar">
+                  <img src="/alvaro.jpeg" alt="Álvaro Robles" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                </div>
                 <h2 className="contact-name">Álvaro Robles González</h2>
                 <p className="contact-role">Desarrollador de aplicaciones multiplataforma</p>
                 <a href="mailto:Roblesgg16@gmail.com" className="contact-email">
