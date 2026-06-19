@@ -101,27 +101,26 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           d.rotation.x = -Math.PI / 2; d.position.set(x, 0.01, 0); scene.add(d)
         }
 
-        // ── Control tower (to the side) ──
-        const tower = new THREE.Group()
-        const shaftMat = new THREE.MeshStandardMaterial({ color: 0x2a3147, roughness: 0.8 })
-        const shaft = new THREE.Mesh(new THREE.BoxGeometry(1.1, 5.5, 1.1), shaftMat)
-        shaft.position.y = 2.75
-        const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 2.4),
-          new THREE.MeshStandardMaterial({ color: 0x3c4a66, roughness: 0.6 }))
-        cabin.position.y = 6.0
-        const windows = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.6, 2.5),
-          new THREE.MeshBasicMaterial({ color: 0x9fd8ff }))
-        windows.position.y = 6.1
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.2, 8),
-          new THREE.MeshStandardMaterial({ color: 0x60708c }))
-        roof.position.y = 7.3
-        const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8),
-          new THREE.MeshBasicMaterial({ color: 0xff3344 }))
-        beacon.position.y = 8.0
-        const beaconLight = new THREE.PointLight(0xff3344, 2, 12); beaconLight.position.y = 8.0
-        tower.add(shaft, cabin, windows, roof, beacon, beaconLight)
-        tower.position.set(-1, 0, -6)
+        // ── Control tower (GLB from Sketchfab) ──
+        const TOWER_X = -1, TOWER_Z = -6, TOWER_H = 9
+        const towerGltf = await new GLTFLoader().loadAsync('/torre.glb')
+        const tower = towerGltf.scene
+        const ts = new THREE.Box3().setFromObject(tower).getSize(new THREE.Vector3())
+        tower.scale.setScalar(TOWER_H / ts.y)
+        const tbox = new THREE.Box3().setFromObject(tower)
+        const tc = tbox.getCenter(new THREE.Vector3())
+        tower.position.x += TOWER_X - tc.x
+        tower.position.z += TOWER_Z - tc.z
+        tower.position.y += -tbox.min.y
+        tower.traverse((o: THREE.Object3D) => {
+          const m = o as THREE.Mesh
+          if (m.isMesh) { m.castShadow = true; m.receiveShadow = true }
+        })
         scene.add(tower)
+        // Blinking red beacon light on top
+        const beaconLight = new THREE.PointLight(0xff3344, 0, 16)
+        beaconLight.position.set(TOWER_X, TOWER_H + 0.5, TOWER_Z)
+        scene.add(beaconLight)
 
         // ── Loading cube ──
         const testBox = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({ color: 0x6366f1 }))
@@ -261,8 +260,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           abMat.opacity = THREE.MathUtils.lerp(abMat.opacity, phase === 'ground' ? 0 : 0.6, 0.1) * (0.7 + Math.random() * 0.3)
           ab.scale.x = 0.8 + Math.random() * 0.5
           // Beacon blink
-          beacon.visible = Math.sin(bt * 6) > 0
-          beaconLight.intensity = beacon.visible ? 2 : 0
+          beaconLight.intensity = Math.sin(bt * 6) > 0 ? 2.5 : 0
 
           if (phase === 'ground') {
             // Parked: jet and camera dead still
