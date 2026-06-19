@@ -516,12 +516,13 @@ main {
   width: 100%;
 }
 
-/* Footer */
+/* Footer — dark so the night diorama flows into it (no white strip below) */
 .footer {
   padding: 40px 0;
-  border-top: 1px solid var(--glass-border);
+  border-top: none;
   text-align: center;
-  color: var(--fg-secondary);
+  color: rgba(255, 255, 255, 0.45);
+  background: #080b18;
   font-size: 0.85rem;
   font-weight: 500;
 }
@@ -535,8 +536,16 @@ main {
   height: 90vh;
   min-height: 560px;
   overflow: hidden;
-  /* Night sky behind the 3D ground */
-  background: linear-gradient(180deg, #05060d 0%, #0a0e1c 55%, #0c1226 100%);
+  /* Fade in from the white page at the top so there's no hard cut,
+     then settle into the night sky */
+  background: linear-gradient(
+    180deg,
+    var(--bg) 0%,
+    #aab4c8 6%,
+    #2b3349 13%,
+    #0d1326 24%,
+    #080b18 100%
+  );
 }
 
 .jet-hint {
