@@ -25,6 +25,9 @@
 html {
   scroll-behavior: smooth;
   overflow-x: hidden;
+  /* Stop the rubber-band bounce that reveals the white fixed background
+     under the dark footer at the very bottom */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -32,6 +35,7 @@ body {
   color: var(--fg);
   font-family: var(--font-main);
   overflow-x: hidden;
+  overscroll-behavior-y: none;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -536,14 +540,16 @@ main {
   height: 90vh;
   min-height: 560px;
   overflow: hidden;
-  /* Fade in from the white page at the top so there's no hard cut,
-     then settle into the night sky */
+  /* Long, gradual fade from the white page into the night sky (no hard cut) */
   background: linear-gradient(
     180deg,
     var(--bg) 0%,
-    #aab4c8 6%,
-    #2b3349 13%,
-    #0d1326 24%,
+    #e2e7ef 9%,
+    #b6c0d2 18%,
+    #818da6 28%,
+    #515c79 37%,
+    #2b3450 45%,
+    #131a30 53%,
     #080b18 100%
   );
 }
