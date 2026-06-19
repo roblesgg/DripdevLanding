@@ -510,8 +510,12 @@ main {
   width: 100%;
 }
 
-/* Footer — dark so the night diorama flows into it (no white strip below) */
+/* Footer — dark so the night diorama flows into it (no white strip below).
+   position:relative + z-index so it stacks ABOVE the fixed white .mesh-bg
+   (a positioned z-index:0 element otherwise paints over the static footer) */
 .footer {
+  position: relative;
+  z-index: 1;
   padding: 40px 0;
   border-top: none;
   text-align: center;
