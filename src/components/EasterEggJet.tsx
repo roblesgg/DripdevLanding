@@ -120,7 +120,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         beacon.position.y = 8.0
         const beaconLight = new THREE.PointLight(0xff3344, 2, 12); beaconLight.position.y = 8.0
         tower.add(shaft, cabin, windows, roof, beacon, beaconLight)
-        tower.position.set(11, 0, -5)
+        tower.position.set(-1, 0, -6)
         scene.add(tower)
 
         // ── Loading cube ──
@@ -265,11 +265,12 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           beaconLight.intensity = beacon.visible ? 2 : 0
 
           if (phase === 'ground') {
-            jet.position.set(PARK_X, GROUND_Y + Math.sin(bt * 1.6) * 0.03, 0)
+            // Parked: jet and camera dead still
+            jet.position.set(PARK_X, GROUND_Y, 0)
             roller.rotation.set(0, Math.PI, 0)
             model.rotation.x = 0
             shadow.visible = true; shadow.position.y = -GROUND_Y + 0.02
-            camPos.copy(CAM_PARK); camLook.copy(LOOK_PARK)
+            camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK)
 
           } else if (phase === 'taxi') {
             // Accelerate down the runway to the LEFT, gear down, until off-screen
@@ -279,8 +280,8 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             roller.rotation.set(0, Math.PI, 0)   // facing left
             model.rotation.x = 0
             shadow.visible = true; shadow.position.y = -GROUND_Y + 0.02
-            // Camera stays put so the jet visibly runs across and exits frame
-            camPos.copy(CAM_PARK); camLook.set(jet.position.x * 0.3, 1.2, 0)
+            // Camera stays completely still — the jet runs across and exits frame
+            camPos.copy(CAM_PARK); camLook.copy(LOOK_PARK)
             if (phaseT >= 1) {
               // Off-screen: go fullscreen, retract gear, turn around to fly back in
               setFullscreen(true)
@@ -337,9 +338,13 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             if (cur <= 0.03) { cancelled = true; setDone(true); renderer.dispose(); if (rafRef.current) cancelAnimationFrame(rafRef.current); return }
           }
 
-          // Smooth camera move (continuous follow)
-          camera.position.lerp(camPos, 0.06)
-          camera.lookAt(camLook)
+          // Camera follow — skipped in ground/taxi (set directly there, fully static)
+          if (phase !== 'ground' && phase !== 'taxi') {
+            camera.position.lerp(camPos, 0.06)
+            camera.lookAt(camLook)
+          } else if (phase === 'taxi') {
+            camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK)
+          }
 
           // Particles
           for (let i = parts.length - 1; i >= 0; i--) {
