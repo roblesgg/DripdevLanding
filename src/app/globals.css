@@ -25,9 +25,9 @@
 html {
   scroll-behavior: smooth;
   overflow-x: hidden;
-  /* Stop the rubber-band bounce that reveals the white fixed background
-     under the dark footer at the very bottom */
-  overscroll-behavior-y: none;
+  /* Dark root background so the bottom overscroll gutter (under the dark
+     footer) shows night, not the white page background */
+  background-color: #080b18;
 }
 
 body {
@@ -35,7 +35,6 @@ body {
   color: var(--fg);
   font-family: var(--font-main);
   overflow-x: hidden;
-  overscroll-behavior-y: none;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }

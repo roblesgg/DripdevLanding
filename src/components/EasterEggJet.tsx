@@ -248,7 +248,9 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           if (cancelled) return
           rafRef.current = requestAnimationFrame(tick)
           const now = performance.now()
-          const dt = Math.min((now - lastTime) / 1000, 0.05)
+          // Clamp generously so the cinematic still finishes in roughly real
+          // wall-clock time on low-fps devices (and never locks scroll for long)
+          const dt = Math.min((now - lastTime) / 1000, 0.1)
           lastTime = now
           bt += dt
 
