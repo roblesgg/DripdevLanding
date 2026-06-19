@@ -44,7 +44,13 @@ export default function Home() {
         <div className="lg-tint" />
         <div className="lg-shine" />
         <div className="navbar-inner">
-          <div className="logo">DRIPDEV</div>
+          <button
+            className="logo"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            aria-label="Volver arriba"
+          >
+            DRIPDEV
+          </button>
           <nav className="nav-links">
             <a href="#dripdev">Sobre mí</a>
             <a href="#contacto">Contacto</a>
