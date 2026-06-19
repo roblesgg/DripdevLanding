@@ -308,14 +308,20 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
               model.rotation.x = 0
             }
 
-            // Camera follows the jet, keeping it lower-centre so it climbs "up"
-            camPos.set(tmpA.x * 0.5, tmpA.y - 1.5, 17)
-            camLook.set(tmpA.x * 0.35, tmpA.y + 1.5, 0)
+            // Camera: NO horizontal pan. Stays fully static during the return +
+            // pirouette (background doesn't move), then rises vertically to
+            // follow the final climb up to the title.
+            if (u < 0.4) {
+              camPos.copy(CAM_PARK); camLook.copy(LOOK_PARK)
+            } else {
+              camPos.set(CAM_PARK.x, tmpA.y - 1.5, CAM_PARK.z)
+              camLook.set(LOOK_PARK.x, tmpA.y + 1.0, 0)
+            }
 
-            // Scroll the page up to the hero while climbing
-            if (u > 0.5) {
+            // Scroll the page up to the hero during the climb
+            if (u > 0.4) {
               const maxScroll = document.body.scrollHeight - window.innerHeight
-              const s = (u - 0.5) / 0.5
+              const s = (u - 0.4) / 0.6
               window.scrollTo(0, Math.max(0, maxScroll * (1 - easeInOut(s))))
             }
 
