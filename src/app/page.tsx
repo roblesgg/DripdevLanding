@@ -1,10 +1,12 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useState, useCallback } from 'react'
 import MeshGradientBackground from '@/components/MeshGradientBackground'
 import ProjectCarousel3D from '@/components/ProjectCarousel3D'
 import AnimatedSection from '@/components/AnimatedSection'
 import { SocialButtons } from '@/components/SocialLinks'
+import EasterEggJet from '@/components/EasterEggJet'
 
 const features = [
   { icon: '🎯', title: 'Criterio', desc: 'Cada proyecto resuelve una necesidad real, sin relleno.' },
@@ -19,7 +21,15 @@ const stats = [
   { number: '∞', label: 'En desarrollo' },
 ]
 
+const LETTERS = 'DripDev'.split('')
+
 export default function Home() {
+  const [exploded, setExploded] = useState(false)
+  const handleImpact = useCallback(() => {
+    setExploded(true)
+    setTimeout(() => setExploded(false), 2500)
+  }, [])
+
   return (
     <main>
       <MeshGradientBackground />
@@ -52,12 +62,18 @@ export default function Home() {
         </motion.div>
 
         <motion.h1
-          className="hero-title"
+          className={`hero-title${exploded ? ' exploded' : ''}`}
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.25 }}
         >
-          <span className="gradient">DripDev</span>
+          <span className="gradient">
+            {LETTERS.map((char, i) => (
+              <span key={i} className="letter" style={{ '--i': i } as React.CSSProperties}>
+                {char}
+              </span>
+            ))}
+          </span>
         </motion.h1>
 
         <motion.p
@@ -102,7 +118,6 @@ export default function Home() {
             </p>
           </AnimatedSection>
 
-          {/* Feature cards */}
           <div className="feature-grid">
             {features.map((f, i) => (
               <AnimatedSection key={f.title} delay={i * 0.12}>
@@ -120,7 +135,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Stats row */}
           <div className="stats-row">
             {stats.map((s, i) => (
               <AnimatedSection key={s.label} delay={0.3 + i * 0.08}>
@@ -156,6 +170,8 @@ export default function Home() {
           </AnimatedSection>
         </div>
       </section>
+
+      <EasterEggJet onImpact={handleImpact} />
 
       <footer className="footer">
         <div className="container">
