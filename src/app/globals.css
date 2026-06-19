@@ -534,7 +534,9 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.35) 100%);
+  /* Solid dark so the area is never white — even while the model loads
+     or if WebGL is unavailable */
+  background: linear-gradient(180deg, #0b0b16 0%, #0a0a14 100%);
 }
 
 .jet-hint {
@@ -560,7 +562,7 @@ main {
   cursor: pointer;
   border-radius: 1.25rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.4);
+  background: #0a0a14;
 }
 
 .jet-canvas-fullscreen {
