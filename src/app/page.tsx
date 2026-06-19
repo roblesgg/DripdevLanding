@@ -27,9 +27,11 @@ const LETTERS = 'DripDev'.split('')
 
 export default function Home() {
   const [exploded, setExploded] = useState(false)
+  const [showLogo, setShowLogo] = useState(false)
   const handleImpact = useCallback(() => {
     setExploded(true)
-    setTimeout(() => setExploded(false), 2500)
+    // Once the letters have blasted away, reveal the logo in their place
+    setTimeout(() => setShowLogo(true), 700)
   }, [])
 
   return (
@@ -69,13 +71,24 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.25 }}
         >
-          <span className="gradient">
-            {LETTERS.map((char, i) => (
-              <span key={i} className="letter" style={{ '--i': i } as React.CSSProperties}>
-                {char}
-              </span>
-            ))}
-          </span>
+          {showLogo ? (
+            <motion.img
+              src="/dripdev-logo.png"
+              alt="DripDev"
+              className="hero-logo"
+              initial={{ opacity: 0, scale: 0.3, rotate: -15 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 140, damping: 12 }}
+            />
+          ) : (
+            <span className="gradient">
+              {LETTERS.map((char, i) => (
+                <span key={i} className="letter" style={{ '--i': i } as React.CSSProperties}>
+                  {char}
+                </span>
+              ))}
+            </span>
+          )}
         </motion.h1>
 
         <motion.p
