@@ -536,19 +536,22 @@ main {
 .jet-section {
   position: relative;
   width: 100%;
-  height: 90vh;
+  height: 92vh;
+  height: 92dvh;
   min-height: 560px;
   overflow: hidden;
-  /* Long, gradual fade from the white page into the night sky (no hard cut) */
+  /* Long, gradual fade from the white page into the night sky — reaches the
+     dark high up so the night dominates (no hard cut) */
   background: linear-gradient(
     180deg,
     var(--bg) 0%,
-    #e2e7ef 9%,
-    #b6c0d2 18%,
-    #818da6 28%,
-    #515c79 37%,
-    #2b3450 45%,
-    #131a30 53%,
+    #d4dbe6 5%,
+    #a3aec4 10%,
+    #6f7b97 16%,
+    #414b69 22%,
+    #232b45 28%,
+    #121930 34%,
+    #080b18 42%,
     #080b18 100%
   );
 }
