@@ -4,309 +4,470 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-function easeIn(t: number)  { return t * t }
-function lerpN(a: number, b: number, t: number) { return a + (b-a)*t }
+// Smooth easings -----------------------------------------------------------
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+}
+function easeOutQuad(t: number) {
+  return 1 - (1 - t) * (1 - t)
+}
+function easeInQuad(t: number) {
+  return t * t
+}
 
-type ExpPart = { m: THREE.Mesh, v: THREE.Vector3, life: number, spin: number }
+// Cubic Bezier curve helper ------------------------------------------------
+function cubicBezier(
+  t: number,
+  p0: THREE.Vector3,
+  p1: THREE.Vector3,
+  p2: THREE.Vector3,
+  p3: THREE.Vector3,
+  out: THREE.Vector3
+) {
+  const u = 1 - t
+  const u2 = u * u
+  const u3 = u2 * u
+  const t2 = t * t
+  const t3 = t2 * t
+  out.set(0, 0, 0)
+  out.addScaledVector(p0, u3)
+  out.addScaledVector(p1, 3 * u2 * t)
+  out.addScaledVector(p2, 3 * u * t2)
+  out.addScaledVector(p3, t3)
+  return out
+}
+
+function cubicBezierTangent(
+  t: number,
+  p0: THREE.Vector3,
+  p1: THREE.Vector3,
+  p2: THREE.Vector3,
+  p3: THREE.Vector3,
+  out: THREE.Vector3
+) {
+  const u = 1 - t
+  out.set(0, 0, 0)
+  out.addScaledVector(p0, -3 * u * u)
+  out.addScaledVector(p1, 3 * u * u - 6 * u * t)
+  out.addScaledVector(p2, 6 * u * t - 3 * t * t)
+  out.addScaledVector(p3, 3 * t * t)
+  return out
+}
+
+// Explosion particles ------------------------------------------------------
+type ExpPart = { m: THREE.Mesh; v: THREE.Vector3; life: number; spin: number }
 
 function spawnExplosion(scene: THREE.Scene, pos: THREE.Vector3, out: ExpPart[]) {
-  const cols = [0xff6600,0xff3300,0xffaa00,0xffffff,0xff0044,0x44aaff,0xffee00,0xff8800]
-  for (let i = 0; i < 150; i++) {
-    const mat = new THREE.MeshBasicMaterial({ color: cols[Math.floor(Math.random()*cols.length)], transparent: true, opacity: 1 })
-    const sz  = 0.05 + Math.random() * 0.45
-    const geo = Math.random() > 0.4 ? new THREE.BoxGeometry(sz,sz,sz) : new THREE.SphereGeometry(sz*0.55,5,5)
-    const m   = new THREE.Mesh(geo, mat)
+  const cols = [0xff6600, 0xff3300, 0xffaa00, 0xffffff, 0xff0044, 0x44aaff, 0xffee00, 0xff8800]
+  for (let i = 0; i < 120; i++) {
+    const mat = new THREE.MeshBasicMaterial({
+      color: cols[Math.floor(Math.random() * cols.length)],
+      transparent: true,
+      opacity: 1,
+    })
+    const sz = 0.04 + Math.random() * 0.35
+    const geo =
+      Math.random() > 0.4 ? new THREE.BoxGeometry(sz, sz, sz) : new THREE.SphereGeometry(sz * 0.55, 5, 5)
+    const m = new THREE.Mesh(geo, mat)
     m.position.copy(pos)
     scene.add(m)
-    const theta = Math.random()*Math.PI*2, phi = Math.random()*Math.PI, spd = 0.06+Math.random()*0.36
+    const theta = Math.random() * Math.PI * 2
+    const phi = Math.random() * Math.PI
+    const spd = 0.05 + Math.random() * 0.28
     out.push({
-      m, life: 0.8+Math.random()*0.6, spin: (Math.random()-0.5)*0.25,
-      v: new THREE.Vector3(Math.sin(phi)*Math.cos(theta)*spd, Math.sin(phi)*Math.sin(theta)*spd*0.8+0.05, Math.cos(phi)*spd*0.6)
+      m,
+      life: 0.7 + Math.random() * 0.7,
+      spin: (Math.random() - 0.5) * 0.2,
+      v: new THREE.Vector3(
+        Math.sin(phi) * Math.cos(theta) * spd,
+        Math.sin(phi) * Math.sin(theta) * spd * 0.8 + 0.05,
+        Math.cos(phi) * spd * 0.6
+      ),
     })
   }
 }
 
-type Phase = 'loading'|'ground'|'taxi'|'return'|'climb'|'impact'|'fadeout'
+type Phase = 'loading' | 'ground' | 'taxi' | 'return' | 'climb' | 'impact' | 'fadeout'
 
 export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
-  const canvasRef   = useRef<HTMLCanvasElement>(null)
-  const rafRef      = useRef<number|null>(null)
-  const phaseRef    = useRef<Phase>('loading')
-  const launchRef   = useRef<(()=>void)|null>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rafRef = useRef<number | null>(null)
+  const phaseRef = useRef<Phase>('loading')
+  const launchRef = useRef<(() => void) | null>(null)
   const onImpactRef = useRef(onImpact)
-  const [launched, setLaunched] = useState(false)
-  const [hint,     setHint]     = useState('Cargando F-16…')
-  const [done,     setDone]     = useState(false)
+  const [hint, setHint] = useState('Cargando F-16…')
+  const [done, setDone] = useState(false)
 
-  useEffect(() => { onImpactRef.current = onImpact }, [onImpact])
+  useEffect(() => {
+    onImpactRef.current = onImpact
+  }, [onImpact])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     let cancelled = false
 
-    ;(async () => {
-      try {
-        await new Promise(r => requestAnimationFrame(r))
-        await new Promise(r => requestAnimationFrame(r))
+    const load = async () => {
+      await new Promise((r) => requestAnimationFrame(r))
+      await new Promise((r) => requestAnimationFrame(r))
 
-        const W0 = canvas.clientWidth || 960
-        const H0 = canvas.clientHeight || 360
+      const W0 = canvas.clientWidth || 960
+      const H0 = canvas.clientHeight || 340
 
-        // alpha:false → the canvas is ALWAYS opaque, so the jet is guaranteed
-        // visible in every browser (no transparent-compositing issues)
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true })
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-        renderer.setSize(W0, H0, false)
-        renderer.outputColorSpace = THREE.SRGBColorSpace
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true,
+        powerPreference: 'high-performance',
+      })
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setSize(W0, H0, false)
+      renderer.outputColorSpace = THREE.SRGBColorSpace
+      renderer.setClearColor(0x000000, 0)
 
-        const scene = new THREE.Scene()
-        scene.background = new THREE.Color(0x0a0e1a)   // night sky
+      const scene = new THREE.Scene()
+      // Transparent canvas: the CSS radial-gradient behind it provides contrast
 
-        const GROUND_Y = -2
+      const GROUND_Y = -0.85
 
-        const camera = new THREE.PerspectiveCamera(40, W0/H0, 0.01, 1000)
-        const CAM_GROUND = new THREE.Vector3(0, 0.4, 14)
-        const LOOK_GROUND = new THREE.Vector3(0, GROUND_Y + 0.6, 0)
-        camera.position.copy(CAM_GROUND)
-        camera.lookAt(LOOK_GROUND)
+      const camera = new THREE.PerspectiveCamera(42, W0 / H0, 0.01, 1000)
+      const camPos = new THREE.Vector3(0, 1.8, 28)
+      const camLook = new THREE.Vector3(0, GROUND_Y + 0.5, 0)
+      camera.position.copy(camPos)
+      camera.lookAt(camLook)
 
-        scene.add(new THREE.AmbientLight(0xffffff, 1.7))
-        const sun = new THREE.DirectionalLight(0xffffff, 2.8); sun.position.set(8, 16, 12); scene.add(sun)
-        const fill = new THREE.DirectionalLight(0x88aaff, 1.3); fill.position.set(-8, 4, -6); scene.add(fill)
-        const engineGlow = new THREE.PointLight(0xff8800, 0, 24); scene.add(engineGlow)
+      scene.add(new THREE.AmbientLight(0xffffff, 2.2))
+      const sun = new THREE.DirectionalLight(0xffffff, 3.2)
+      sun.position.set(8, 16, 12)
+      scene.add(sun)
+      const fill = new THREE.DirectionalLight(0xaaccff, 1.8)
+      fill.position.set(-8, 4, -6)
+      scene.add(fill)
+      const rim = new THREE.DirectionalLight(0x4455ff, 1.2)
+      rim.position.set(0, 6, -10)
+      scene.add(rim)
 
-        // Runway line
-        const runway = new THREE.Mesh(
-          new THREE.PlaneGeometry(80, 0.05),
-          new THREE.MeshBasicMaterial({ color: 0x3a4570, transparent: true, opacity: 0.55 })
-        )
-        runway.position.set(0, GROUND_Y - 0.02, 0)
-        scene.add(runway)
+      // Soft runway under the jet
+      const runway = new THREE.Mesh(
+        new THREE.PlaneGeometry(22, 0.12),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.14 })
+      )
+      runway.rotation.x = -Math.PI / 2
+      runway.position.set(0, GROUND_Y + 0.01, 0)
+      scene.add(runway)
 
-        // Spinning cube while the model loads
-        const testBox = new THREE.Mesh(
-          new THREE.BoxGeometry(1,1,1),
-          new THREE.MeshPhongMaterial({ color: 0x6366f1 })
-        )
-        testBox.position.set(0, GROUND_Y + 0.6, 0)
-        scene.add(testBox)
-        renderer.render(scene, camera)
+      // Landing light pool
+      const pool = new THREE.Mesh(
+        new THREE.CircleGeometry(1.8, 32),
+        new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.1 })
+      )
+      pool.rotation.x = -Math.PI / 2
+      pool.position.set(0, GROUND_Y + 0.02, 0)
+      scene.add(pool)
 
-        const gltf = await new Promise<{ scene: THREE.Group }>((res, rej) =>
-          new GLTFLoader().load(
-            '/f16.glb',
-            res as () => void,
-            (e) => { if (e.total) setHint(`Cargando F-16… ${Math.round(e.loaded/e.total*100)}%`) },
-            rej
-          )
-        )
+      // Load model
+      const gltf = await new GLTFLoader().loadAsync('/f16.glb')
+      if (cancelled) return
 
-        scene.remove(testBox)
-        testBox.geometry.dispose()
+      const model = gltf.scene
+      const SCALE = 0.055
+      model.scale.setScalar(SCALE)
 
-        const jet = gltf.scene
-
-        // Smaller — normalise longest axis to 4.5 units
-        const box    = new THREE.Box3().setFromObject(jet)
-        const size   = box.getSize(new THREE.Vector3())
-        const maxDim = Math.max(size.x, size.y, size.z)
-        jet.scale.setScalar(4.5 / maxDim)
-
-        const box2 = new THREE.Box3().setFromObject(jet)
-        box2.getCenter(jet.position).negate()
-
-        const pivot = new THREE.Group()
-        pivot.add(jet)
-        scene.add(pivot)
-        pivot.rotation.y = Math.PI   // nose faces LEFT (parked)
-
-        jet.traverse((c: THREE.Object3D) => {
-          const mesh = c as THREE.Mesh
-          if (mesh.isMesh) { mesh.castShadow = true; mesh.receiveShadow = true }
-        })
-
-        // Landing gear: model ships both states as separate nodes
-        const gearDown: THREE.Object3D[] = []
-        const gearUp:   THREE.Object3D[] = []
-        jet.traverse((o: THREE.Object3D) => {
-          if (o.name.includes('landingOff')) gearUp.push(o)
-          else if (o.name.includes('landingOn')) gearDown.push(o)
-        })
-        const setGear = (down: boolean) => {
-          gearDown.forEach(o => { o.visible = down })
-          gearUp.forEach(o => { o.visible = !down })
+      let gearOn: THREE.Object3D | null = null
+      let gearOff: THREE.Object3D | null = null
+      model.traverse((o) => {
+        if (o.name.includes('landingOn') || o.name.includes('landingOnLight')) {
+          gearOn = o
         }
-        setGear(true)
-
-        // Sit wheels on the runway
-        const jetBox = new THREE.Box3().setFromObject(pivot)
-        const restY = GROUND_Y - jetBox.min.y + pivot.position.y
-        pivot.position.y = restY
-
-        // Afterburner cones (tail at model −X after the Y-flip)
-        const mkCone = (color: number, r: number, h: number, op: number) => {
-          const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op })
-          return new THREE.Mesh(new THREE.ConeGeometry(r, h, 14), mat)
+        if (o.name.includes('landingOff')) {
+          gearOff = o
         }
-        const flames = [
-          { mesh: mkCone(0xffffff, 0.12, 0.5, 0.95), baseOp: 0.95 },
-          { mesh: mkCone(0xffee44, 0.18, 0.9, 0.90), baseOp: 0.90 },
-          { mesh: mkCone(0xff8800, 0.25, 1.4, 0.80), baseOp: 0.80 },
-          { mesh: mkCone(0xff3300, 0.30, 2.0, 0.55), baseOp: 0.55 },
-        ]
-        const fb = new THREE.Box3().setFromObject(jet)
-        const tailX = fb.min.x - 0.15
-        flames.forEach(({ mesh }) => {
-          mesh.rotation.z = Math.PI / 2
-          mesh.position.set(tailX, (fb.min.y + fb.max.y) / 2, 0)
-          jet.add(mesh)
-          mesh.visible = false
-        })
+      })
 
-        // Render the parked jet immediately so it's visible BEFORE any click
-        renderer.render(scene, camera)
+      // Group that we'll move/rotate
+      const jet = new THREE.Group()
+      jet.add(model)
+      scene.add(jet)
 
-        setHint('✈  Haz clic para despegar')
-        phaseRef.current = 'ground'
+      // Base pose: profile, nose pointing left
+      model.rotation.y = Math.PI
+      model.position.y = 0.42 // wheel height offset
 
-        const FLY_Y = GROUND_Y + 3.2   // cruising altitude on the return pass
-        const expParts: ExpPart[] = []
-        let globalT = 0, phaseT = 0
-        let lastTime = performance.now()
-        let scrollFrom = 0
-        const setFlames = (on: boolean) => flames.forEach(({ mesh }) => { mesh.visible = on })
+      // Initial parked position
+      const parkedX = 4.0
+      jet.position.set(parkedX, GROUND_Y, 0)
 
-        const launch = () => {
-          const W = window.innerWidth, H = window.innerHeight
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-          renderer.setSize(W, H, false)
-          camera.aspect = W / H
-          camera.updateProjectionMatrix()
-          setFlames(true)
-          engineGlow.intensity = 12
-          scrollFrom = window.scrollY
-          phaseRef.current = 'taxi'; phaseT = 0
-        }
-        launchRef.current = launch
-
-        const tick = () => {
-          if (cancelled) return
-          rafRef.current = requestAnimationFrame(tick)
-          const now = performance.now()
-          const dt = Math.min((now - lastTime) / 1000, 0.05)
-          lastTime = now
-          globalT += dt; phaseT += dt
-
-          flames.forEach(({ mesh, baseOp }) => {
-            const mat = mesh.material as THREE.MeshBasicMaterial
-            mat.opacity = baseOp * (0.7 + Math.random() * 0.3)
-            mesh.scale.x = 0.8 + Math.random() * 0.5
-            mesh.scale.y = mesh.scale.z = 0.85 + Math.random() * 0.3
-          })
-
-          const phase = phaseRef.current
-
-          if (phase === 'ground') {
-            // Parked at the bottom, straight, gear down
-            pivot.position.set(0, restY, 0)
-            pivot.rotation.set(0, Math.PI, 0)
-            camera.position.copy(CAM_GROUND); camera.lookAt(LOOK_GROUND)
-
-          } else if (phase === 'taxi') {
-            // Accelerate along the ground to the LEFT, gear down, until off-screen
-            const DUR = 2.0, p = Math.min(phaseT / DUR, 1)
-            pivot.position.x = lerpN(0, -22, easeIn(p))
-            pivot.position.y = restY
-            pivot.rotation.set(0, Math.PI, 0)
-            engineGlow.position.copy(pivot.position)
-            engineGlow.intensity = 13 + Math.random() * 5
-            camera.position.copy(CAM_GROUND); camera.lookAt(LOOK_GROUND)
-            if (p >= 1) {
-              // Off-screen: turn around + retract gear, ready to fly back in
-              setGear(false)
-              phaseRef.current = 'return'; phaseT = 0
-            }
-
-          } else if (phase === 'return') {
-            // Re-enter from the left, FLYING (gear up, nose right), to the center
-            const DUR = 2.2, p = Math.min(phaseT / DUR, 1)
-            pivot.position.x = lerpN(-24, 0, p)              // linear, constant speed
-            pivot.position.y = FLY_Y + Math.sin(globalT * 1.5) * 0.15
-            pivot.rotation.set(0, 0, 0)                      // nose faces RIGHT now
-            engineGlow.position.copy(pivot.position)
-            engineGlow.intensity = 15 + Math.random() * 5
-            camera.position.copy(CAM_GROUND); camera.lookAt(0, FLY_Y, 0)
-            if (p >= 1) { phaseRef.current = 'climb'; phaseT = 0 }
-
-          } else if (phase === 'climb') {
-            // From the centre, pitch up and climb — slow, continuous, LINEAR
-            const DUR = 4.2, p = Math.min(phaseT / DUR, 1)
-            pivot.position.x = 0
-            pivot.position.y = lerpN(FLY_Y, FLY_Y + 26, p)  // linear climb
-            pivot.rotation.set(0, 0, lerpN(0, Math.PI / 2.3, Math.min(p * 2.5, 1)))  // pitch nose up early
-            engineGlow.position.copy(pivot.position)
-            engineGlow.intensity = 16 + Math.random() * 5
-            // Camera rises linearly with the jet — constant velocity tracking
-            camera.position.set(0, lerpN(CAM_GROUND.y, CAM_GROUND.y + 26, p), 14)
-            camera.lookAt(0, lerpN(FLY_Y, FLY_Y + 26, p) - 1, 0)
-            // Scroll the page up to the hero, linearly
-            window.scrollTo(0, lerpN(scrollFrom, 0, p))
-            if (p >= 1) {
-              phaseRef.current = 'impact'; phaseT = 0
-              spawnExplosion(scene, pivot.position.clone(), expParts)
-              pivot.visible = false; setFlames(false); engineGlow.intensity = 0
-              onImpactRef.current()
-            }
-
-          } else if (phase === 'impact') {
-            const k = dt * 60
-            let anyAlive = false
-            for (const pt of expParts) {
-              if (pt.life > 0) {
-                anyAlive = true; pt.life -= 0.013 * k
-                pt.m.position.addScaledVector(pt.v, k); pt.v.y -= 0.006 * k
-                pt.m.rotation.x += pt.spin * k; pt.m.rotation.z += pt.spin * 0.7 * k
-                ;(pt.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, pt.life * 1.25)
-                pt.m.scale.setScalar(Math.max(0.01, 1 - (1 - pt.life) * 0.3))
-              } else { pt.m.visible = false }
-            }
-            if (!anyAlive || phaseT > 2) { phaseRef.current = 'fadeout'; phaseT = 0 }
-
-          } else if (phase === 'fadeout') {
-            const cur = parseFloat(canvas.style.opacity || '1')
-            canvas.style.opacity = String(Math.max(0, cur - 0.04 * dt * 60))
-            if (cur <= 0.05) { cancelled = true; setDone(true); return }
-          }
-
-          renderer.render(scene, camera)
-        }
-        tick()
-
-      } catch (err) {
-        console.error('[EasterEggJet]', err)
-        setHint('⚠ ' + (err instanceof Error ? err.message : String(err)))
+      // Gear state
+      const setGear = (down: boolean) => {
+        if (gearOn) gearOn.visible = down
+        if (gearOff) gearOff.visible = !down
       }
-    })()
+      setGear(true)
 
-    return () => { cancelled = true; if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+      // Trajectory points ---------------------------------------------------
+      // Phase 1: taxi left out of view
+      // Phase 2: return from left, flying up to center
+      // Phase 3: climb up through the page
+      const p0 = new THREE.Vector3(parkedX, GROUND_Y, 0)
+      const p1 = new THREE.Vector3(-1.2, GROUND_Y, 0)
+      const p2 = new THREE.Vector3(-7.5, GROUND_Y, 0)
+      const p3 = new THREE.Vector3(-9.0, 1.2, 0)
+      // return curve: comes back from left, arcs toward center
+      const q0 = new THREE.Vector3(-9.0, 1.2, 0)
+      const q1 = new THREE.Vector3(-6.5, 2.0, 0)
+      const q2 = new THREE.Vector3(-2.5, 3.0, 0)
+      const q3 = new THREE.Vector3(0, 6.0, 0)
+      // climb curve: center up
+      const r0 = new THREE.Vector3(0, 6.0, 0)
+      const r1 = new THREE.Vector3(0.6, 9.0, 0)
+      const r2 = new THREE.Vector3(-0.3, 13.0, 0)
+      const r3 = new THREE.Vector3(0, 18.0, 0)
+
+      const pos = new THREE.Vector3()
+      const tan = new THREE.Vector3()
+      const lookTarget = new THREE.Vector3().copy(camLook)
+      const dummy = new THREE.Object3D()
+
+      // Orientation base: nose points left
+      const baseQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0))
+      const leftDir = new THREE.Vector3(-1, 0, 0)
+
+      let phaseStart = performance.now()
+      let phaseT = 0
+      let phase: Phase = 'ground'
+      phaseRef.current = 'ground'
+
+      const setPhase = (p: Phase) => {
+        phase = p
+        phaseRef.current = p
+        phaseStart = performance.now()
+        phaseT = 0
+        if (p === 'taxi') setGear(true)
+        if (p === 'return') setGear(false)
+      }
+
+      setPhase('ground')
+      setHint('✈  Haz clic para despegar')
+
+      // Afterburner cone
+      const abGeo = new THREE.ConeGeometry(0.18, 1.4, 16, 1, true)
+      const abMat = new THREE.MeshBasicMaterial({
+        color: 0xffaa33,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+      })
+      const afterburner = new THREE.Mesh(abGeo, abMat)
+      const getAbMat = () => afterburner.material as THREE.MeshBasicMaterial
+      afterburner.rotation.z = -Math.PI / 2
+      afterburner.position.set(3.6, 0.42, 0)
+      jet.add(afterburner)
+
+      // Soft shadow under the jet (helps it stand out on light page background)
+      const shadow = new THREE.Mesh(
+        new THREE.CircleGeometry(2.4, 32),
+        new THREE.MeshBasicMaterial({ color: 0x0a0c1a, transparent: true, opacity: 0.35 })
+      )
+      shadow.rotation.x = -Math.PI / 2
+      shadow.position.set(0, -0.42, 0)
+      jet.add(shadow)
+
+      // Particles
+      const parts: ExpPart[] = []
+      let impactCalled = false
+
+      const launch = () => {
+        if (phase !== 'ground') return
+        setPhase('taxi')
+      }
+      launchRef.current = launch
+      canvas.addEventListener('click', launch)
+
+      // Smooth camera helpers
+      const targetCamPos = new THREE.Vector3().copy(camPos)
+      const targetLook = new THREE.Vector3().copy(camLook)
+
+      const phaseDuration: Record<Exclude<Phase, 'loading' | 'fadeout'>, number> = {
+        ground: Infinity,
+        taxi: 1.9,
+        return: 2.4,
+        climb: 3.8,
+        impact: 1.1,
+      }
+
+      let last = performance.now()
+      const tick = () => {
+        if (cancelled) return
+        const now = performance.now()
+        const dt = Math.min((now - last) / 1000, 0.05)
+        last = now
+
+        const duration = phaseDuration[phase as keyof typeof phaseDuration] || 1
+        if (phase !== 'ground') {
+          phaseT += dt / duration
+        }
+
+
+        if (phase === 'ground') {
+          pos.set(parkedX, GROUND_Y, 0)
+          jet.position.lerp(pos, 0.08)
+          jet.rotation.z = THREE.MathUtils.lerp(jet.rotation.z, 0, 0.06)
+          jet.rotation.x = THREE.MathUtils.lerp(jet.rotation.x, 0, 0.06)
+          targetCamPos.set(0, 1.8, 28)
+          targetLook.set(parkedX * 0.5, GROUND_Y + 0.5, 0)
+        }
+
+        if (phase === 'taxi') {
+          const u = easeInOutCubic(Math.min(phaseT, 1))
+          cubicBezier(u, p0, p1, p2, p3, pos)
+          jet.position.lerp(pos, 0.12)
+          cubicBezierTangent(u, p0, p1, p2, p3, tan)
+          const q = new THREE.Quaternion().setFromUnitVectors(leftDir, tan.normalize())
+          jet.quaternion.slerp(q.multiply(baseQuat), 0.12)
+
+          // Slight chassis wobble on runway
+          jet.rotation.z = Math.sin(u * Math.PI * 6) * 0.015
+
+          getAbMat().opacity = THREE.MathUtils.lerp(getAbMat().opacity, 0.35, 0.1)
+
+          targetCamPos.set(jet.position.x * 0.35, 1.6, 26)
+          targetLook.set(jet.position.x, GROUND_Y + 0.6, 0)
+
+          if (phaseT >= 1) setPhase('return')
+        }
+
+        if (phase === 'return') {
+          const u = easeInOutCubic(Math.min(phaseT, 1))
+          cubicBezier(u, q0, q1, q2, q3, pos)
+          jet.position.lerp(pos, 0.1)
+          cubicBezierTangent(u, q0, q1, q2, q3, tan)
+          const q = new THREE.Quaternion().setFromUnitVectors(leftDir, tan.normalize())
+          jet.quaternion.slerp(q.multiply(baseQuat), 0.1)
+
+          // Banking a tiny bit on the arc
+          jet.rotation.z = THREE.MathUtils.lerp(jet.rotation.z, -0.12, 0.05)
+
+          getAbMat().opacity = THREE.MathUtils.lerp(getAbMat().opacity, 0.55, 0.08)
+
+          targetCamPos.set(jet.position.x * 0.4, jet.position.y * 0.55 + 1.8, 24)
+          targetLook.set(jet.position.x * 0.5, jet.position.y, 0)
+
+          if (phaseT >= 1) setPhase('climb')
+        }
+
+        if (phase === 'climb') {
+          const u = easeInOutCubic(Math.min(phaseT, 1))
+          cubicBezier(u, r0, r1, r2, r3, pos)
+          jet.position.lerp(pos, 0.08)
+          cubicBezierTangent(u, r0, r1, r2, r3, tan)
+          const q = new THREE.Quaternion().setFromUnitVectors(leftDir, tan.normalize())
+          jet.quaternion.slerp(q.multiply(baseQuat), 0.08)
+
+          jet.rotation.z = THREE.MathUtils.lerp(jet.rotation.z, 0, 0.04)
+
+          getAbMat().opacity = THREE.MathUtils.lerp(getAbMat().opacity, 0.7, 0.06)
+
+          targetCamPos.set(jet.position.x * 0.25, jet.position.y * 0.6 + 2.0, 22)
+          targetLook.set(jet.position.x * 0.2, jet.position.y + 0.8, 0)
+
+          // Smoothly scroll the page up as the jet climbs
+          const maxScroll = document.body.scrollHeight - window.innerHeight
+          const targetScroll = maxScroll * (1 - u)
+          window.scrollTo({ top: targetScroll, behavior: 'auto' })
+
+          if (phaseT >= 1) setPhase('impact')
+        }
+
+        if (phase === 'impact') {
+          const u = Math.min(phaseT, 1)
+          targetCamPos.set(jet.position.x * 0.15, jet.position.y + 1.8, 20)
+          targetLook.set(jet.position.x * 0.1, jet.position.y + 2, 0)
+          getAbMat().opacity = THREE.MathUtils.lerp(getAbMat().opacity, 0, 0.12)
+
+          if (u >= 0.25 && !impactCalled) {
+            impactCalled = true
+            spawnExplosion(scene, jet.position, parts)
+            onImpactRef.current()
+          }
+          if (phaseT >= 1) {
+            setPhase('fadeout')
+          }
+        }
+
+        if (phase === 'fadeout') {
+          // Let the page scroll and logo finish, then fade canvas
+          const el = renderer.domElement
+          el.style.opacity = String(Math.max(0, parseFloat(el.style.opacity || '1') - dt * 1.2))
+          if (parseFloat(el.style.opacity) <= 0.01) {
+            setDone(true)
+            cancelled = true
+            renderer.dispose()
+            if (rafRef.current) cancelAnimationFrame(rafRef.current)
+            return
+          }
+        }
+
+        // Smooth camera follow (continuous, slow, linear-feeling)
+        camera.position.lerp(targetCamPos, 0.035)
+        lookTarget.lerp(targetLook, 0.04)
+        camera.lookAt(lookTarget)
+
+        // Animate explosion particles
+        for (let i = parts.length - 1; i >= 0; i--) {
+          const p = parts[i]
+          p.life -= dt
+          p.m.position.addScaledVector(p.v, dt * 60)
+          p.v.y -= dt * 0.25 // gravity
+          p.v.multiplyScalar(0.985)
+          p.m.rotation.x += p.spin
+          p.m.rotation.y += p.spin * 0.7
+          ;(p.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, p.life)
+          if (p.life <= 0) {
+            scene.remove(p.m)
+            p.m.geometry.dispose()
+            parts.splice(i, 1)
+          }
+        }
+
+        renderer.render(scene, camera)
+        rafRef.current = requestAnimationFrame(tick)
+      }
+
+      rafRef.current = requestAnimationFrame(tick)
+
+      // Resize
+      const onResize = () => {
+        if (cancelled || !canvas.parentElement) return
+        const W = canvas.clientWidth || 960
+        const H = canvas.clientHeight || 340
+        camera.aspect = W / H
+        camera.updateProjectionMatrix()
+        renderer.setSize(W, H, false)
+      }
+      window.addEventListener('resize', onResize)
+
+      return () => {
+        window.removeEventListener('resize', onResize)
+        canvas.removeEventListener('click', launch)
+      }
+    }
+
+    const cleanupPromise = load()
+
+    return () => {
+      cancelled = true
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      cleanupPromise.catch(() => {})
+    }
   }, [])
-
-  useEffect(() => {
-    if (!launched) return
-    requestAnimationFrame(() => { launchRef.current?.() })
-  }, [launched])
 
   if (done) return null
 
   return (
     <section className="jet-section">
-      <p className="jet-hint">{hint}</p>
-      <canvas
-        ref={canvasRef}
-        onClick={() => { if (phaseRef.current === 'ground') setLaunched(true) }}
-        className={launched ? 'jet-canvas-fullscreen' : 'jet-canvas-inline'}
-      />
+      <div className="jet-hint">{hint}</div>
+      <canvas ref={canvasRef} className="jet-canvas-inline" />
     </section>
   )
 }
