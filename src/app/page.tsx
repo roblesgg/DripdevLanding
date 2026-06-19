@@ -2,11 +2,13 @@
 
 import { motion } from 'framer-motion'
 import { useState, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import MeshGradientBackground from '@/components/MeshGradientBackground'
 import ProjectCarousel3D from '@/components/ProjectCarousel3D'
 import AnimatedSection from '@/components/AnimatedSection'
 import { SocialButtons } from '@/components/SocialLinks'
-import EasterEggJet from '@/components/EasterEggJet'
+
+const EasterEggJet = dynamic(() => import('@/components/EasterEggJet'), { ssr: false })
 
 const features = [
   { icon: '🎯', title: 'Criterio', desc: 'Cada proyecto resuelve una necesidad real, sin relleno.' },

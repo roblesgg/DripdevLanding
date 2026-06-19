@@ -575,10 +575,11 @@ main {
 /* ── Letter explosion ── */
 .hero-title .letter {
   display: inline-block;
-  will-change: transform, opacity;
+  /* no will-change here: rompe background-clip:text del padre */
 }
 
 .hero-title.exploded .letter {
+  will-change: transform, opacity;
   animation: letterBlast 1.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
   animation-delay: calc(var(--i) * 0.04s);
 }
