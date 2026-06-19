@@ -266,24 +266,15 @@ main {
   font-size: clamp(3.5rem, 12vw, 8rem);
   font-weight: 900;
   line-height: 0.95;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.02em;
   margin-bottom: 24px;
   color: var(--fg);
 }
 
 .gradient {
-  background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 50%, #6366f1 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-size: 200% auto;
-  animation: gradientShift 4s ease infinite;
-}
-
-@keyframes gradientShift {
-  0% { background-position: 0% center; }
-  50% { background-position: 100% center; }
-  100% { background-position: 0% center; }
+  color: #0a0a0a;
+  background: none;
+  -webkit-text-fill-color: #0a0a0a;
 }
 
 .hero-subtitle {
