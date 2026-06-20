@@ -197,14 +197,15 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
 
           // Smooth flight path (CatmullRom): a gentle rising spiral up to the
           // letters and off the top — no tight loops, fluid banking.
+          // Y is strictly increasing → it never dips: it just keeps climbing.
           const wp: [number, number, number][] = [
-            [0.0, -1.35, 0], [0.22, -0.95, 1.4], [0.0, -0.55, -1.4], [-0.22, -0.15, 1.2],
-            [0.0, 0.16, -0.9], [0.1, titleNdcY - 0.3, 0.4],     // straighten toward the centre…
-            // …then a STRAIGHT vertical exit (all x=0, z=0 → no abrupt break)
-            [0.0, titleNdcY - 0.05, 0], [0.0, titleNdcY + 0.35, 0], [0.0, 0.95, 0], [0.0, 1.5, 0],
+            [0.0, -1.35, 0], [0.22, -0.95, 1.4], [0.0, -0.55, -1.4], [-0.22, -0.12, 1.2],
+            [0.08, 0.12, -0.7], [0.06, titleNdcY - 0.16, 0.3],   // straighten toward the centre…
+            // …then a STRAIGHT vertical exit (all x=0, z=0 → no break, just up & away)
+            [0.0, titleNdcY - 0.02, 0], [0.0, titleNdcY + 0.4, 0], [0.0, 1.15, 0], [0.0, 1.6, 0],
           ]
           const pts = wp.map(([x, y, z]) => { const p = worldFromNdc(x, y, DIST, new THREE.Vector3()); p.z += z; return p })
-          curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5)
+          curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.5)
           lockScroll()
           canvas.style.opacity = '1'
           jet.visible = true
