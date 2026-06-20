@@ -218,10 +218,11 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
 
         const setPhase = (p: Phase) => { phase = p; phaseRef.current = p; phaseT = 0 }
 
-        const durations: Record<string, number> = { taxi: 1.7, return: 2.4, climb: 8.0, impact: 1.2 }
+        const durations: Record<string, number> = { taxi: 1.7, return: 2.4, climb: 6.0, impact: 1.2 }
 
         const camPos  = new THREE.Vector3().copy(CAM_PARK)
         const camLook = new THREE.Vector3().copy(LOOK_PARK)
+        const tmpV    = new THREE.Vector3()
 
         const launch = () => {
           if (phase !== 'ground') return
@@ -288,26 +289,32 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             // Clean pull-up to vertical, then a slow climb that scrolls the whole
             // page up to the title; gentle barrel roll on the way up.
             const u = Math.min(phaseT, 1)
-            const pitch = lerpN(0, Math.PI / 2, easeInOut(Math.min(u / 0.5, 1)))
-            const jy = lerpN(5, 56, u)              // steady (linear) climb
-            jet.position.set(0, jy, 0)
-            roller.rotation.set(0, 0, pitch)
-            if (u > 0.3) { rollAngle += dt * 2.0; model.rotation.x = rollAngle } else model.rotation.x = 0
+            // Nose pitches up to vertical quickly & smoothly → climbs nose-first
+            // (not levitating). Gentle barrel roll on the way up.
+            roller.rotation.set(0, 0, lerpN(0, Math.PI / 2, easeInOut(Math.min(u / 0.3, 1))))
+            if (u > 0.25) { rollAngle += dt * 2.0; model.rotation.x = rollAngle } else model.rotation.x = 0
             shadow.visible = false
-            // Smooth handoff from the parked framing, then the jet visibly RISES
-            // through the frame (centre → top) as it climbs. Camera set DIRECTLY
-            // (no lerp) so there is no lag or teleport.
-            const blend = easeInOut(Math.min(u / 0.16, 1))
-            const riseInFrame = lerpN(0, 11, u)     // jet gains height within the frame
-            const lookY = lerpN(LOOK_PARK.y, jy - riseInFrame, blend)
-            const posY  = lerpN(CAM_PARK.y, jy - riseInFrame - 3, blend)
-            camera.position.set(CAM_PARK.x, posY, CAM_PARK.z)
-            camera.lookAt(LOOK_PARK.x, lookY, 0)
-            camLook.set(LOOK_PARK.x, lookY, 0)       // remembered for the impact shake
-            // Leave the dark airfield "box" behind fast (page reaches the hero by
-            // ~u 0.35), so the jet then climbs FREELY up the open/light page
+
+            // Camera stays EXACTLY at the parked framing (no follow → no wobble)
+            camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK); camera.updateMatrixWorld()
+
+            // Scroll up to the hero fast so the DripDev title comes into view
             const maxScroll = document.body.scrollHeight - window.innerHeight
-            window.scrollTo(0, Math.max(0, maxScroll * (1 - easeInOut(Math.min(u / 0.35, 1)))))
+            window.scrollTo(0, Math.max(0, maxScroll * (1 - easeInOut(Math.min(u / 0.32, 1)))))
+
+            // Fly the jet UP the screen to the title's exact position and stop
+            // there (not the ceiling). Target the title by screen coords → 3D.
+            let titleNdcY = 0.4
+            const titleEl = document.querySelector('.hero-title')
+            if (titleEl) {
+              const r = titleEl.getBoundingClientRect()
+              titleNdcY = 1 - 2 * ((r.top + r.height / 2) / window.innerHeight)
+            }
+            tmpV.set(0, 5, 0).project(camera)                       // where the return left it
+            const ndcX = lerpN(tmpV.x, 0, easeInOut(u))
+            const ndcY = lerpN(tmpV.y, titleNdcY, easeInOut(u))
+            tmpV.set(ndcX, ndcY, 0.5).unproject(camera).sub(camera.position).normalize()
+            jet.position.copy(camera.position).addScaledVector(tmpV, 26)
             if (phaseT >= 1) setPhase('impact')
 
           } else if (phase === 'impact') {
@@ -317,11 +324,12 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
               jet.visible = false
               onImpactRef.current()
             }
-            // Keep the camera where the climb left it, with a brief shake
+            // Camera stays at the parked framing with a brief shake
             const shake = Math.max(0, 0.3 - phaseT) * 0.7
+            camera.position.copy(CAM_PARK)
             camera.position.x += (Math.random() - 0.5) * shake
             camera.position.y += (Math.random() - 0.5) * shake
-            camera.lookAt(camLook)
+            camera.lookAt(LOOK_PARK)
             if (phaseT >= 1) setPhase('fadeout')
 
           } else if (phase === 'fadeout') {
