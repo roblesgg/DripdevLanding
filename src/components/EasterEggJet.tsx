@@ -117,11 +117,15 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         const START_NDCY = -1.3            // below the screen (where the button is)
         const END_NDCY = 1.45              // off the top
         let titleNdcY = 0.4
+        let titleWorldY = 0
+        let curve: THREE.CatmullRomCurve3 | null = null
+        let rollAngle = 0
         let phaseT = 0
         let released = false
         let trailT = 0
         let last = performance.now()
-        const DUR = { fly: 8.4, settle: 3.0 }
+        const X_AXIS = new THREE.Vector3(1, 0, 0)
+        const DUR = { fly: 8.8, settle: 3.0 }
 
         const launch = () => {
           if (phaseRef.current !== 'idle') return
@@ -137,6 +141,16 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             const r = el.getBoundingClientRect()
             titleNdcY = THREE.MathUtils.clamp(1 - 2 * ((r.top + r.height / 2) / window.innerHeight), -0.6, 0.78)
           }
+          // Smooth aerobatic flight path (CatmullRom): up from the bottom, a loop
+          // (pirouette) + spiral, up to the letters and off the top.
+          titleWorldY = worldFromNdc(0, titleNdcY, DIST, new THREE.Vector3()).y
+          const wp: [number, number, number][] = [
+            [0.0, -1.35, 0], [0.22, -0.9, 1.4], [0.30, -0.5, -1.4], [0.06, -0.2, 1.1],
+            [0.34, 0.0, 0], [0.44, 0.24, 1.2], [0.12, 0.36, -1.2], [-0.24, 0.18, 0.7], [-0.04, -0.04, 0], [0.14, 0.22, 1.1],
+            [0.0, titleNdcY, 0], [0.0, 0.95, 0.7], [0.0, 1.5, 0],
+          ]
+          const pts = wp.map(([x, y, z]) => { const p = worldFromNdc(x, y, DIST, new THREE.Vector3()); p.z += z; return p })
+          curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5)
           canvas.style.opacity = '1'
           jet.visible = true
           released = false; phaseT = 0
@@ -155,46 +169,27 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
 
           if (phase === 'fly') {
             phaseT += dt / DUR.fly
-            const u = Math.min(phaseT, 1)
-            const env = Math.sin(Math.min(u, 0.97) * Math.PI)   // 0 at ends, 1 mid
-            const baseY = lerpN(START_NDCY, END_NDCY, u)
-
-            // Smooth weave + a vertical LOOP (pirouette) in the lower-middle
-            let nx = Math.sin(u * Math.PI * 2) * 0.16 * env
-            let ny = baseY
-            let pitch = Math.PI / 2                              // nose straight up by default
-            if (u > 0.25 && u < 0.5) {
-              const a = ((u - 0.25) / 0.25) * Math.PI * 2        // one full loop
-              const lr = 0.3
-              nx += (1 - Math.cos(a)) * lr
-              ny += Math.sin(a) * lr
-              pitch = Math.atan2(Math.cos(a), Math.sin(a))       // nose follows the loop
+            const t = Math.min(phaseT, 1)
+            if (curve) {
+              curve.getPointAt(t, jet.position)                 // arc-length → constant speed
+              curve.getTangentAt(t, tmpV)                       // smooth tangent → fluid banking
+              jet.quaternion.setFromUnitVectors(X_AXIS, tmpV)   // nose follows the path
+              rollAngle += dt * 5.5
+              model.rotation.x = rollAngle                      // barrel roll around the fuselage
             }
-            worldFromNdc(nx, ny, DIST, jetPos)
-
-            // gentle circular spiral for 3D depth
-            const sang = u * Math.PI * 2 * 2.4
-            const srad = 1.5
-            jet.position.set(jetPos.x + Math.cos(sang) * srad * 0.4, jetPos.y, jetPos.z + Math.sin(sang) * srad)
-            roller.rotation.set(0, 0, pitch)
-
-            // Barrel roll (a roll on itself) after the loop, on the way up
-            const rollP = THREE.MathUtils.clamp((u - 0.55) / 0.33, 0, 1)
-            model.rotation.x = rollP * Math.PI * 2 * 2           // two clean rolls
-
             abMat.opacity = 0.55 * (0.7 + Math.random() * 0.3)
             ab.scale.x = 0.8 + Math.random() * 0.5
 
-            // Light smoke trail
+            // Dense smoke trail
             trailT += dt
-            if (trailT > 0.07) { trailT = 0; addPuff(scene, smokeTex, jet.position, smoke, false) }
+            if (trailT > 0.035) { trailT = 0; addPuff(scene, smokeTex, jet.position, smoke, false) }
 
             // Passing the letters → a big 3D smoke cloud + swap to the logo
-            if (!released && ny >= titleNdcY) {
+            if (!released && jet.position.y >= titleWorldY) {
               released = true
-              worldFromNdc(0, titleNdcY, DIST, tmpV)
-              addPuff(scene, smokeTex, tmpV, smoke, true)
-              addPuff(scene, smokeTex, tmpV, smoke, true)   // extra: more smoke at the swap
+              addPuff(scene, smokeTex, jet.position, smoke, true)
+              addPuff(scene, smokeTex, jet.position, smoke, true)
+              addPuff(scene, smokeTex, jet.position, smoke, true)   // lots of smoke at the swap
               onImpactRef.current()
             }
             if (phaseT >= 1) { jet.visible = false; phaseRef.current = 'settle'; phaseT = 0 }
