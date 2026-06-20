@@ -27,7 +27,7 @@ function spawnExplosion(scene: THREE.Scene, pos: THREE.Vector3, out: ExpPart[], 
   flash.position.copy(pos); flash.intensity = 6
 }
 
-type Phase = 'loading'|'ground'|'taxi'|'flight'|'impact'|'fadeout'
+type Phase = 'loading'|'ground'|'taxi'|'return'|'climb'|'impact'|'fadeout'
 
 export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
   const canvasRef    = useRef<HTMLCanvasElement>(null)
@@ -197,24 +197,6 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         jet.position.set(PARK_X, GROUND_Y, 0)
         roller.rotation.set(0, Math.PI, 0)     // parked: nose LEFT
 
-        // Flight path (CatmullRom): enter from left → centre → pirouette → climb up
-        const curve = new THREE.CatmullRomCurve3([
-          new THREE.Vector3(-20, 6, 0),
-          new THREE.Vector3(-9, 6, 0),
-          new THREE.Vector3(0, 6, 0),       // centre of the screen
-          new THREE.Vector3(4.5, 7.6, 0),   // pirouette begins
-          new THREE.Vector3(5, 10.5, 0),
-          new THREE.Vector3(2.4, 12.6, 0),
-          new THREE.Vector3(-0.6, 12.2, 0), // over the top
-          new THREE.Vector3(-1, 14.5, 0),
-          new THREE.Vector3(0, 17.5, 0),    // straight up now
-          new THREE.Vector3(0, 26, 0),
-          new THREE.Vector3(0, 40, 0),      // exit toward the title
-        ], false, 'catmullrom', 0.5)
-
-        const curveStart = curve.getPoint(0)
-        const ROLL_START = 0.62               // begin barrel roll on the vertical climb
-
         // Render the parked jet right away so it's visible BEFORE any click
         renderer.render(scene, camera)
         setHint('✈  Haz clic para despegar')
@@ -231,11 +213,10 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
 
         const setPhase = (p: Phase) => { phase = p; phaseRef.current = p; phaseT = 0 }
 
-        const durations: Record<string, number> = { taxi: 1.7, flight: 7.0, impact: 1.2 }
+        const durations: Record<string, number> = { taxi: 1.7, return: 2.4, climb: 8.0, impact: 1.2 }
 
         const camPos  = new THREE.Vector3().copy(CAM_PARK)
         const camLook = new THREE.Vector3().copy(LOOK_PARK)
-        const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tan = new THREE.Vector3()
 
         const launch = () => {
           if (phase !== 'ground') return
@@ -281,48 +262,41 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             // Camera stays completely still — the jet runs across and exits frame
             camPos.copy(CAM_PARK); camLook.copy(LOOK_PARK)
             if (phaseT >= 1) {
-              // Off-screen: go fullscreen, retract gear, turn around to fly back in
-              setFullscreen(true)
+              // Off-screen: retract gear + turn around to fly back in (still INLINE)
               setGear(false)
               shadow.visible = false
-              setPhase('flight')
+              setPhase('return')
             }
 
-          } else if (phase === 'flight') {
+          } else if (phase === 'return') {
+            // Fly in from the far left, LEVEL, to the centre. Stays INLINE so the
+            // shot is identical to the parked view (camera fully static).
+            const u = easeInOut(Math.min(phaseT, 1))
+            jet.position.set(lerpN(-26, 0, u), 5, 0)
+            roller.rotation.set(0, 0, 0)        // nose RIGHT, level
+            model.rotation.x = 0
+            shadow.visible = false
+            if (phaseT >= 1) {
+              setFullscreen(true)               // go fullscreen for the climb up the page
+              setPhase('climb')
+            }
+
+          } else if (phase === 'climb') {
+            // Clean pull-up to vertical, then a slow climb that scrolls the whole
+            // page up to the title; gentle barrel roll on the way up.
             const u = Math.min(phaseT, 1)
-            curve.getPoint(u, tmpA)
-            jet.position.copy(tmpA)
-
-            // Nose follows the path tangent (in the XY plane) → natural pirouette
-            curve.getTangent(u, tan)
-            const pitch = Math.atan2(tan.y, tan.x)   // facing-right hemisphere
+            const pitch = lerpN(0, Math.PI / 2, easeInOut(Math.min(u / 0.32, 1)))
+            const y = lerpN(5, 64, easeIn(u))
+            jet.position.set(0, y, 0)
             roller.rotation.set(0, 0, pitch)
-
-            // Barrel roll on the vertical climb
-            if (u > ROLL_START) {
-              rollAngle += dt * 3.2
-              model.rotation.x = rollAngle
-            } else {
-              model.rotation.x = 0
-            }
-
-            // Camera: NO horizontal pan. Stays fully static during the return +
-            // pirouette (background doesn't move), then rises vertically to
-            // follow the final climb up to the title.
-            if (u < 0.4) {
-              camPos.copy(CAM_PARK); camLook.copy(LOOK_PARK)
-            } else {
-              camPos.set(CAM_PARK.x, tmpA.y - 1.5, CAM_PARK.z)
-              camLook.set(LOOK_PARK.x, tmpA.y + 1.0, 0)
-            }
-
-            // Scroll the page up to the hero during the climb
-            if (u > 0.4) {
-              const maxScroll = document.body.scrollHeight - window.innerHeight
-              const s = (u - 0.4) / 0.6
-              window.scrollTo(0, Math.max(0, maxScroll * (1 - easeInOut(s))))
-            }
-
+            if (u > 0.32) { rollAngle += dt * 2.2; model.rotation.x = rollAngle } else model.rotation.x = 0
+            shadow.visible = false
+            // Camera follows vertically only (no horizontal pan)
+            camPos.set(CAM_PARK.x, y - 2.5, CAM_PARK.z)
+            camLook.set(LOOK_PARK.x, y + 1.0, 0)
+            // Scroll the whole page from bottom to top, slowly, across the climb
+            const maxScroll = document.body.scrollHeight - window.innerHeight
+            window.scrollTo(0, Math.max(0, maxScroll * (1 - easeInOut(u))))
             if (phaseT >= 1) setPhase('impact')
 
           } else if (phase === 'impact') {
@@ -342,11 +316,12 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             if (cur <= 0.03) { cancelled = true; setDone(true); renderer.dispose(); if (rafRef.current) cancelAnimationFrame(rafRef.current); return }
           }
 
-          // Camera follow — skipped in ground/taxi (set directly there, fully static)
-          if (phase !== 'ground' && phase !== 'taxi') {
+          // Camera: climb/impact = smooth vertical follow; everything else (taxi,
+          // return) = the exact static parked framing. Ground sets it in its branch.
+          if (phase === 'climb' || phase === 'impact') {
             camera.position.lerp(camPos, 0.06)
             camera.lookAt(camLook)
-          } else if (phase === 'taxi') {
+          } else if (phase !== 'ground') {
             camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK)
           }
 
