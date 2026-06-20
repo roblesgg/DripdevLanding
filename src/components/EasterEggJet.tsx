@@ -8,18 +8,29 @@ function lerpN(a: number, b: number, t: number) { return a + (b - a) * t }
 
 type SmokePart = { m: THREE.Sprite; life: number; maxLife: number; v: THREE.Vector3; grow: number; maxOp: number }
 
-// Soft billboard sprites (same core technique as three.quarks / three-nebula)
+// Fluffy, irregular smoke puff (cloudy texture from many overlapping soft blobs
+// → reads as volumetric when layered, same core technique as three.quarks)
 function makeSmokeTexture() {
+  const size = 256
   const c = document.createElement('canvas')
-  c.width = c.height = 128
+  c.width = c.height = size
   const ctx = c.getContext('2d')!
-  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
-  g.addColorStop(0, 'rgba(255,255,255,0.9)')
-  g.addColorStop(0.35, 'rgba(255,255,255,0.4)')
-  g.addColorStop(1, 'rgba(255,255,255,0)')
-  ctx.fillStyle = g
-  ctx.fillRect(0, 0, 128, 128)
-  return new THREE.CanvasTexture(c)
+  for (let i = 0; i < 42; i++) {
+    const ang = Math.random() * Math.PI * 2
+    const rad = Math.pow(Math.random(), 0.6) * size * 0.34   // biased to the centre
+    const x = size / 2 + Math.cos(ang) * rad
+    const y = size / 2 + Math.sin(ang) * rad
+    const r = size * (0.10 + Math.random() * 0.17)
+    const a = 0.05 + Math.random() * 0.10
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+    g.addColorStop(0, `rgba(255,255,255,${a})`)
+    g.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = g
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.needsUpdate = true
+  return t
 }
 
 // A thick wide cloud that fully covers the title while the text swaps to the logo
@@ -27,6 +38,7 @@ function addTitleSmoke(scene: THREE.Scene, tex: THREE.Texture, center: THREE.Vec
   for (let i = 0; i < 95; i++) {
     const g = 0.6 + Math.random() * 0.2
     const mat = new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(g, g, g * 1.03), transparent: true, opacity: 0, depthWrite: false })
+    mat.rotation = Math.random() * Math.PI * 2
     const s = new THREE.Sprite(mat)
     s.position.copy(center).add(new THREE.Vector3((Math.random() - 0.5) * halfW * 2.0, (Math.random() - 0.5) * halfW * 0.9, (Math.random() - 0.5) * 2.5))
     s.scale.setScalar(halfW * 0.8 + Math.random() * halfW * 0.8)
@@ -44,6 +56,7 @@ function addPuff(scene: THREE.Scene, tex: THREE.Texture, pos: THREE.Vector3, out
   for (let i = 0; i < n; i++) {
     const g = 0.58 + Math.random() * 0.22
     const mat = new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(g, g, g * 1.03), transparent: true, opacity: 0, depthWrite: false })
+    mat.rotation = Math.random() * Math.PI * 2
     const s = new THREE.Sprite(mat)
     const spread = big ? 3.8 : 0.6
     s.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread * 0.6, (Math.random() - 0.5) * spread))
@@ -177,8 +190,8 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             titleNdcY = THREE.MathUtils.clamp(1 - 2 * ((r.top + r.height / 2) / window.innerHeight), -0.6, 0.78)
             titleNdcW = r.width / window.innerWidth
           }
-          // Title position + width in world space (for the smoke that covers it)
-          worldFromNdc(0, titleNdcY, DIST, titleCenter)
+          // Title position (lowered a touch so the smoke sits ON the letters) + width
+          worldFromNdc(0, titleNdcY - 0.1, DIST, titleCenter)
           titleWorldY = titleCenter.y
           titleHalfW = Math.max(3, Math.abs(worldFromNdc(titleNdcW, titleNdcY, DIST, new THREE.Vector3()).x - titleCenter.x))
 
