@@ -26,12 +26,12 @@ const stats = [
 const LETTERS = 'DripDev'.split('')
 
 export default function Home() {
-  const [exploded, setExploded] = useState(false)
+  const [exploded] = useState(false)
   const [showLogo, setShowLogo] = useState(false)
   const handleImpact = useCallback(() => {
-    setExploded(true)
-    // Once the letters have blasted away, reveal the logo in their place
-    setTimeout(() => setShowLogo(true), 700)
+    // The jet leaves a cloud of smoke over the title; swap the text for the
+    // logo behind it so it's revealed when the smoke clears.
+    setTimeout(() => setShowLogo(true), 500)
   }, [])
 
   return (

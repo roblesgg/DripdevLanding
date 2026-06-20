@@ -27,7 +27,25 @@ function spawnExplosion(scene: THREE.Scene, pos: THREE.Vector3, out: ExpPart[], 
   flash.position.copy(pos); flash.intensity = 6
 }
 
-type Phase = 'loading'|'ground'|'taxi'|'return'|'climb'|'impact'|'fadeout'
+type SmokePart = { m: THREE.Mesh, life: number, maxLife: number, v: THREE.Vector3, grow: number }
+
+function spawnSmoke(scene: THREE.Scene, pos: THREE.Vector3, out: SmokePart[]) {
+  for (let i = 0; i < 70; i++) {
+    const g = 0.55 + Math.random() * 0.28
+    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(g, g, g * 1.03), transparent: true, opacity: 0, depthWrite: false })
+    const m = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8), mat)
+    m.position.copy(pos).add(new THREE.Vector3((Math.random()-0.5)*5, (Math.random()-0.5)*4, (Math.random()-0.5)*5))
+    m.scale.setScalar(0.5 + Math.random() * 0.9)
+    scene.add(m)
+    const L = 2.4 + Math.random() * 2.2
+    out.push({
+      m, life: L, maxLife: L, grow: 1.6 + Math.random() * 2.4,
+      v: new THREE.Vector3((Math.random()-0.5)*0.7, 0.2 + Math.random()*0.6, (Math.random()-0.5)*0.7),
+    })
+  }
+}
+
+type Phase = 'loading'|'ground'|'taxi'|'return'|'climb'|'smoke'|'fadeout'
 
 export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
   const canvasRef    = useRef<HTMLCanvasElement>(null)
@@ -208,20 +226,23 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         phaseRef.current = 'ground'
 
         const parts: ExpPart[] = []
+        const smoke: SmokePart[] = []
         let phase: Phase = 'ground'
         let phaseT = 0
         let rollAngle = 0
         let impactCalled = false
+        let titleNdcY = 0.38
         let lastTime = performance.now()
         let scrollFrom = 0
         let scrollTo = 0
         let climbDistance = 26
         let restoreScrollBehavior: (() => void) | null = null
         let bt = 0   // beacon timer
+        const smokeOrigin = new THREE.Vector3()
 
         const setPhase = (p: Phase) => { phase = p; phaseRef.current = p; phaseT = 0 }
 
-        const durations: Record<string, number> = { taxi: 1.7, return: 2.8, climb: 7.4, impact: 1.2 }
+        const durations: Record<string, number> = { taxi: 1.7, return: 2.8, climb: 5.4, smoke: 3.0 }
         const RETURN_PULL_PITCH = Math.PI * 0.22
 
         const camPos  = new THREE.Vector3().copy(CAM_PARK)
@@ -264,13 +285,13 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           const titleEl = document.querySelector('.hero-title')
           if (titleEl) {
             const r = titleEl.getBoundingClientRect()
-            const titleCenterAbs = r.top + window.scrollY + r.height / 2
-            const finalTitleCenterY = titleCenterAbs - scrollTo
-            climbTargetNdc.y = THREE.MathUtils.clamp(1 - 2 * (finalTitleCenterY / window.innerHeight), -0.55, 0.72)
+            const finalTitleCenterY = r.top + window.scrollY + r.height / 2 - scrollTo
+            titleNdcY = THREE.MathUtils.clamp(1 - 2 * (finalTitleCenterY / window.innerHeight), -0.55, 0.72)
           } else {
-            climbTargetNdc.y = 0.38
+            titleNdcY = 0.38
           }
           climbTargetNdc.x = 0
+          climbTargetNdc.y = 1.55   // fly PAST the title and off the top of the screen
           setPhase('climb')
         }
 
@@ -347,7 +368,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             // (not levitating). Gentle barrel roll on the way up.
             const pitchT = easeInOut(Math.min(u / 0.35, 1))   // nose → vertical over the first 35%
             const moveT = u                                     // LINEAR rise: keeps moving to the end
-            const scrollT = easeInOut(u)
+            const scrollT = easeInOut(Math.min(u / 0.32, 1))   // reach the hero BEFORE the smoke drops
             roller.rotation.set(0, 0, lerpN(RETURN_PULL_PITCH, Math.PI / 2, pitchT))
             // CONTINUOUS corkscrew spin the whole way — never freezes
             rollAngle += dt * (3.4 + u * 3.6)
@@ -372,21 +393,22 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             jet.position.x += Math.cos(ang) * rad
             jet.position.z += Math.sin(ang) * rad     // depth → reads as 3D
             jet.position.y += Math.cos(ang) * rad * 0.22
-            if (phaseT >= 1) setPhase('impact')
 
-          } else if (phase === 'impact') {
-            if (phaseT >= 0.15 && !impactCalled) {
+            // As the jet passes over the DripDev letters, dump a big cloud of
+            // smoke there and swap the title for the logo (hidden by the smoke).
+            // The jet just keeps going and flies off the top of the screen.
+            if (!impactCalled && ndcY >= titleNdcY) {
               impactCalled = true
-              spawnExplosion(scene, jet.position, parts, flash)
-              jet.visible = false
+              worldFromNdc(0, titleNdcY, climbDistance, smokeOrigin)
+              spawnSmoke(scene, smokeOrigin, smoke)
               onImpactRef.current()
             }
-            // Camera stays at the parked framing with a brief shake
-            const shake = Math.max(0, 0.3 - phaseT) * 0.7
-            camera.position.copy(CAM_PARK)
-            camera.position.x += (Math.random() - 0.5) * shake
-            camera.position.y += (Math.random() - 0.5) * shake
-            camera.lookAt(LOOK_PARK)
+            if (phaseT >= 1) { jet.visible = false; setPhase('smoke') }
+
+          } else if (phase === 'smoke') {
+            // Jet is gone; the smoke billows over the title then clears, revealing
+            // the logo underneath. Camera holds the framing.
+            camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK)
             if (phaseT >= 1) setPhase('fadeout')
 
           } else if (phase === 'fadeout') {
@@ -413,6 +435,19 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             if (p.life <= 0) { scene.remove(p.m); p.m.geometry.dispose(); parts.splice(i, 1) }
           }
           flash.intensity = THREE.MathUtils.lerp(flash.intensity, 0, 0.08)
+
+          // Smoke puffs: drift, grow, fade in then slowly out
+          for (let i = smoke.length - 1; i >= 0; i--) {
+            const s = smoke[i]
+            s.life -= dt
+            s.m.position.addScaledVector(s.v, dt * 3)
+            s.v.multiplyScalar(0.97)
+            s.m.scale.setScalar(s.m.scale.x + s.grow * dt)
+            const t = s.life / s.maxLife                       // 1 → 0
+            const op = Math.min(1, (1 - t) * 6) * Math.min(1, t * 2.6) * 0.6
+            ;(s.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, op)
+            if (s.life <= 0) { scene.remove(s.m); s.m.geometry.dispose(); smoke.splice(i, 1) }
+          }
 
           renderer.render(scene, camera)
         }
