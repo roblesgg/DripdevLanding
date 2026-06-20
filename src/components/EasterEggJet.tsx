@@ -78,6 +78,11 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         const fill = new THREE.DirectionalLight(0x88aaff, 1.3); fill.position.set(-8, 5, -6); scene.add(fill)
         const flash = new THREE.PointLight(0xff6600, 0, 30); scene.add(flash)
 
+        // Airfield group (ground + runway + tower) — hidden once the jet climbs
+        // away so it doesn't "follow" the jet up the page
+        const airfield = new THREE.Group()
+        scene.add(airfield)
+
         // ── Ground (black) ──
         const ground = new THREE.Mesh(
           new THREE.PlaneGeometry(400, 400),
@@ -85,7 +90,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         )
         ground.rotation.x = -Math.PI / 2
         ground.position.y = 0
-        scene.add(ground)
+        airfield.add(ground)
 
         // ── Runway markings (white lines) ──
         const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 })
@@ -93,12 +98,12 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         // side lines (run along X)
         ;[-3.2, 3.2].forEach(z => {
           const l = new THREE.Mesh(new THREE.PlaneGeometry(120, 0.12), lineMat)
-          l.rotation.x = -Math.PI / 2; l.position.set(0, 0.01, z); scene.add(l)
+          l.rotation.x = -Math.PI / 2; l.position.set(0, 0.01, z); airfield.add(l)
         })
         // dashed centre line
         for (let x = -55; x <= 55; x += 4) {
           const d = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.1), dashMat)
-          d.rotation.x = -Math.PI / 2; d.position.set(x, 0.01, 0); scene.add(d)
+          d.rotation.x = -Math.PI / 2; d.position.set(x, 0.01, 0); airfield.add(d)
         }
 
         // ── Control tower (GLB from Sketchfab) ──
@@ -116,11 +121,11 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           const m = o as THREE.Mesh
           if (m.isMesh) { m.castShadow = true; m.receiveShadow = true }
         })
-        scene.add(tower)
+        airfield.add(tower)
         // Blinking red beacon light on top
         const beaconLight = new THREE.PointLight(0xff3344, 0, 16)
         beaconLight.position.set(TOWER_X, TOWER_H + 0.5, TOWER_Z)
-        scene.add(beaconLight)
+        airfield.add(beaconLight)
 
         // ── Loading cube ──
         const testBox = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({ color: 0x6366f1 }))
@@ -277,7 +282,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             roller.rotation.set(0, 0, 0)        // nose RIGHT, level
             model.rotation.x = 0
             shadow.visible = false
-            if (phaseT >= 1) setPhase('climb')
+            if (phaseT >= 1) { airfield.visible = false; setPhase('climb') }
 
           } else if (phase === 'climb') {
             // Clean pull-up to vertical, then a slow climb that scrolls the whole
