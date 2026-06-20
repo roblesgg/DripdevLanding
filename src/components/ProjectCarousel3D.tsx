@@ -73,10 +73,10 @@ function getVariant(offset: number, spacing: number, rotate: number) {
   return {
     x: offset * spacing,
     rotateY: dir * rotate,
-    scale: 0.65,
-    opacity: 0.38,
+    scale: 0.66,
+    opacity: 0.5,
     zIndex: 10 - Math.abs(offset),
-    filter: 'blur(8px) brightness(0.75)',
+    filter: 'blur(4px) brightness(0.82)',
   }
 }
 
@@ -140,8 +140,14 @@ export default function ProjectCarousel3D() {
                 initial={false}
                 animate={variant}
                 transition={{ type: 'spring', stiffness: 52, damping: 19, mass: 1.1 }}
-                whileHover={isCenter ? { y: -10, scale: 1.03 } : {}}
+                whileHover={isCenter ? { y: -10, scale: 1.03 } : { scale: 0.72, opacity: 0.7 }}
                 style={{ transformStyle: 'preserve-3d' }}
+                onClick={(e) => {
+                  // A non-active card just gets selected (brought to the front),
+                  // it does NOT open the link. Only the active card opens.
+                  if (!isCenter) { e.preventDefault(); goTo(index) }
+                  else markInteraction()
+                }}
               >
                 {/* Liquid glass layers */}
                 <div className="lg-effect" />
