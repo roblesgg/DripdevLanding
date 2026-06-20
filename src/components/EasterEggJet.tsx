@@ -214,18 +214,69 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         let impactCalled = false
         let lastTime = performance.now()
         let scrollFrom = 0
+        let scrollTo = 0
+        let climbDistance = 26
+        let restoreScrollBehavior: (() => void) | null = null
         let bt = 0   // beacon timer
 
         const setPhase = (p: Phase) => { phase = p; phaseRef.current = p; phaseT = 0 }
 
-        const durations: Record<string, number> = { taxi: 1.7, return: 2.4, climb: 6.0, impact: 1.2 }
+        const durations: Record<string, number> = { taxi: 1.7, return: 2.8, climb: 7.4, impact: 1.2 }
+        const RETURN_PULL_PITCH = Math.PI * 0.22
 
         const camPos  = new THREE.Vector3().copy(CAM_PARK)
         const camLook = new THREE.Vector3().copy(LOOK_PARK)
         const tmpV    = new THREE.Vector3()
+        const climbStartNdc = new THREE.Vector2()
+        const climbTargetNdc = new THREE.Vector2(0, 0.38)
+
+        const worldFromNdc = (ndcX: number, ndcY: number, distance: number, out: THREE.Vector3) => {
+          tmpV.set(ndcX, ndcY, 0.5).unproject(camera).sub(camera.position).normalize()
+          return out.copy(camera.position).addScaledVector(tmpV, distance)
+        }
+
+        const useImmediateScroll = () => {
+          if (restoreScrollBehavior) return
+          const htmlStyle = document.documentElement.style
+          const bodyStyle = document.body.style
+          const htmlScrollBehavior = htmlStyle.scrollBehavior
+          const bodyScrollBehavior = bodyStyle.scrollBehavior
+          htmlStyle.scrollBehavior = 'auto'
+          bodyStyle.scrollBehavior = 'auto'
+          restoreScrollBehavior = () => {
+            htmlStyle.scrollBehavior = htmlScrollBehavior
+            bodyStyle.scrollBehavior = bodyScrollBehavior
+            restoreScrollBehavior = null
+          }
+        }
+
+        const beginClimb = () => {
+          camera.position.copy(CAM_PARK)
+          camera.lookAt(LOOK_PARK)
+          camera.updateMatrixWorld()
+
+          const start = jet.position.clone().project(camera)
+          climbStartNdc.set(start.x, start.y)
+          climbDistance = camera.position.distanceTo(jet.position)
+          scrollFrom = window.scrollY
+          scrollTo = 0
+
+          const titleEl = document.querySelector('.hero-title')
+          if (titleEl) {
+            const r = titleEl.getBoundingClientRect()
+            const titleCenterAbs = r.top + window.scrollY + r.height / 2
+            const finalTitleCenterY = titleCenterAbs - scrollTo
+            climbTargetNdc.y = THREE.MathUtils.clamp(1 - 2 * (finalTitleCenterY / window.innerHeight), -0.55, 0.72)
+          } else {
+            climbTargetNdc.y = 0.38
+          }
+          climbTargetNdc.x = 0
+          setPhase('climb')
+        }
 
         const launch = () => {
           if (phase !== 'ground') return
+          useImmediateScroll()
           setFullscreen(true)   // switch once, at the click, so taxi+return+climb
           setPhase('taxi')      // share ONE consistent shot (no mid-air reframe)
         }
@@ -278,12 +329,15 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           } else if (phase === 'return') {
             // Fly in from the far left, LEVEL, to the centre. Stays INLINE so the
             // shot is identical to the parked view (camera fully static).
-            const u = easeInOut(Math.min(phaseT, 1))
-            jet.position.set(lerpN(-26, 0, u), 5, 0)
-            roller.rotation.set(0, 0, 0)        // nose RIGHT, level
+            const raw = Math.min(phaseT, 1)
+            const u = easeInOut(raw)
+            const pull = easeInOut(THREE.MathUtils.clamp((raw - 0.68) / 0.32, 0, 1))
+            jet.position.set(lerpN(-26, -0.15, u), lerpN(5, 5.7, pull), 0)
+            roller.rotation.set(0, 0, RETURN_PULL_PITCH * pull)
             model.rotation.x = 0
             shadow.visible = false
-            if (phaseT >= 1) { airfield.visible = false; setPhase('climb') }
+            airfield.visible = true
+            if (phaseT >= 1) beginClimb()
 
           } else if (phase === 'climb') {
             // Clean pull-up to vertical, then a slow climb that scrolls the whole
@@ -291,30 +345,26 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             const u = Math.min(phaseT, 1)
             // Nose pitches up to vertical quickly & smoothly → climbs nose-first
             // (not levitating). Gentle barrel roll on the way up.
-            roller.rotation.set(0, 0, lerpN(0, Math.PI / 2, easeInOut(Math.min(u / 0.3, 1))))
-            if (u > 0.25) { rollAngle += dt * 2.0; model.rotation.x = rollAngle } else model.rotation.x = 0
+            const pitchT = easeInOut(Math.min(u / 0.45, 1))   // nose → vertical over the first 45%
+            const moveT = u                                     // LINEAR rise: keeps moving to the end
+            const scrollT = easeInOut(u)
+            roller.rotation.set(0, 0, lerpN(RETURN_PULL_PITCH, Math.PI / 2, pitchT))
+            // Barrel roll only in the upper half, while it is still clearly rising
+            if (u > 0.5) { rollAngle += dt * 1.3; model.rotation.x = rollAngle } else model.rotation.x = 0
             shadow.visible = false
+            airfield.visible = u < 0.18
 
             // Camera stays EXACTLY at the parked framing (no follow → no wobble)
             camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK); camera.updateMatrixWorld()
 
             // Scroll up to the hero fast so the DripDev title comes into view
-            const maxScroll = document.body.scrollHeight - window.innerHeight
-            window.scrollTo(0, Math.max(0, maxScroll * (1 - easeInOut(Math.min(u / 0.32, 1)))))
+            window.scrollTo(0, Math.max(0, lerpN(scrollFrom, scrollTo, scrollT)))
 
             // Fly the jet UP the screen to the title's exact position and stop
             // there (not the ceiling). Target the title by screen coords → 3D.
-            let titleNdcY = 0.4
-            const titleEl = document.querySelector('.hero-title')
-            if (titleEl) {
-              const r = titleEl.getBoundingClientRect()
-              titleNdcY = 1 - 2 * ((r.top + r.height / 2) / window.innerHeight)
-            }
-            tmpV.set(0, 5, 0).project(camera)                       // where the return left it
-            const ndcX = lerpN(tmpV.x, 0, easeInOut(u))
-            const ndcY = lerpN(tmpV.y, titleNdcY, easeInOut(u))
-            tmpV.set(ndcX, ndcY, 0.5).unproject(camera).sub(camera.position).normalize()
-            jet.position.copy(camera.position).addScaledVector(tmpV, 26)
+            const ndcX = lerpN(climbStartNdc.x, climbTargetNdc.x, moveT)
+            const ndcY = lerpN(climbStartNdc.y, climbTargetNdc.y, moveT)
+            worldFromNdc(ndcX, ndcY, climbDistance, jet.position)
             if (phaseT >= 1) setPhase('impact')
 
           } else if (phase === 'impact') {
@@ -335,7 +385,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           } else if (phase === 'fadeout') {
             const cur = parseFloat(canvas.style.opacity || '1')
             canvas.style.opacity = String(Math.max(0, cur - dt * 1.1))
-            if (cur <= 0.03) { cancelled = true; setDone(true); renderer.dispose(); if (rafRef.current) cancelAnimationFrame(rafRef.current); return }
+            if (cur <= 0.03) { cancelled = true; restoreScrollBehavior?.(); setDone(true); renderer.dispose(); if (rafRef.current) cancelAnimationFrame(rafRef.current); return }
           }
 
           // Camera: ground/climb/impact set their own above; taxi & return use
