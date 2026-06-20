@@ -299,8 +299,10 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             camera.position.set(CAM_PARK.x, posY, CAM_PARK.z)
             camera.lookAt(LOOK_PARK.x, lookY, 0)
             camLook.set(LOOK_PARK.x, lookY, 0)       // remembered for the impact shake
+            // Leave the dark airfield "box" behind fast (page reaches the hero by
+            // ~u 0.35), so the jet then climbs FREELY up the open/light page
             const maxScroll = document.body.scrollHeight - window.innerHeight
-            window.scrollTo(0, Math.max(0, maxScroll * (1 - u)))   // linear, synced
+            window.scrollTo(0, Math.max(0, maxScroll * (1 - easeInOut(Math.min(u / 0.35, 1)))))
             if (phaseT >= 1) setPhase('impact')
 
           } else if (phase === 'impact') {
