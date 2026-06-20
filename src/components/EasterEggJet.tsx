@@ -18,9 +18,9 @@ function addPuff(scene: THREE.Scene, pos: THREE.Vector3, out: SmokePart[], big: 
     m.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread * 0.6, (Math.random() - 0.5) * spread))
     m.scale.setScalar((big ? 0.8 : 0.45) + Math.random() * 0.6)
     scene.add(m)
-    const L = (big ? 2.4 : 1.5) + Math.random() * 1.3
+    const L = (big ? 2.5 : 1.0) + Math.random() * (big ? 1.4 : 0.8)
     out.push({
-      m, life: L, maxLife: L, grow: (big ? 1.8 : 0.9) + Math.random() * 1.4,
+      m, life: L, maxLife: L, grow: (big ? 1.9 : 0.7) + Math.random() * (big ? 1.4 : 0.8),
       v: new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.15 + Math.random() * 0.4, (Math.random() - 0.5) * 0.5),
     })
   }
@@ -107,7 +107,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         let released = false
         let trailT = 0
         let last = performance.now()
-        const DUR = { fly: 4.6, settle: 2.6 }
+        const DUR = { fly: 7.6, settle: 2.8 }
 
         const launch = () => {
           if (phaseRef.current !== 'idle') return
@@ -139,19 +139,23 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             phaseT += dt / DUR.fly
             const u = Math.min(phaseT, 1)
             const ndcY = lerpN(START_NDCY, END_NDCY, u)
-            worldFromNdc(0, ndcY, DIST, jetPos)
-            // 3D corkscrew helix around the vertical climb
-            const ang = u * Math.PI * 2 * 3
-            const rad = 2.1
+            // Horizontal weave (S-curves), fading in/out at the ends
+            const env = Math.sin(Math.min(u, 0.96) * Math.PI)
+            const ndcX = Math.sin(u * Math.PI * 3.5) * 0.42 * env
+            worldFromNdc(ndcX, ndcY, DIST, jetPos)
+            // 3D corkscrew: more turns + pulsing radius (real depth)
+            const ang = u * Math.PI * 2 * 5
+            const rad = (1.6 + Math.sin(u * Math.PI * 4) * 0.9) * 1.3
             jet.position.set(jetPos.x + Math.cos(ang) * rad, jetPos.y, jetPos.z + Math.sin(ang) * rad)
-            roller.rotation.set(0, 0, Math.PI / 2)        // nose straight up
-            rollAngle += dt * 6.5                          // continuous corkscrew spin
+            // nose up + bank into the weave + continuous (varying) corkscrew roll
+            roller.rotation.set(0, Math.cos(u * Math.PI * 3.5) * 0.5 * env, Math.PI / 2)
+            rollAngle += dt * (8 + Math.sin(u * Math.PI * 6) * 4)
             model.rotation.x = rollAngle
             abMat.opacity = 0.55 * (0.7 + Math.random() * 0.3)
             ab.scale.x = 0.8 + Math.random() * 0.5
             // Smoke trail
             trailT += dt
-            if (trailT > 0.035) { trailT = 0; addPuff(scene, jet.position, smoke, false) }
+            if (trailT > 0.07) { trailT = 0; addPuff(scene, jet.position, smoke, false) }
             // Passing the letters → big 3D smoke cloud + swap to logo
             if (!released && ndcY >= titleNdcY) {
               released = true
