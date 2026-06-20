@@ -851,7 +851,7 @@ main {
   z-index: 1;
   width: 100%;
   max-width: 1000px;
-  height: 380px;
+  height: 480px;
   touch-action: pan-y;
   cursor: grab;
 }
@@ -889,8 +889,7 @@ main {
   text-decoration: none;
 }
 @media (max-width: 640px) {
-  .r3f-stage { height: 320px; }
-  .r3f-title { font-size: 1.4rem; }
+  .r3f-stage { height: 420px; }
 }
 
 .coverflow-glow {
