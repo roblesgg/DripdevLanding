@@ -143,7 +143,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         // Normalise size (longest axis → 3.6 units) and centre on origin
         const mb = new THREE.Box3().setFromObject(model)
         const ms = mb.getSize(new THREE.Vector3())
-        model.scale.setScalar(3.6 / Math.max(ms.x, ms.y, ms.z))
+        model.scale.setScalar(2.6 / Math.max(ms.x, ms.y, ms.z))
         const mb2 = new THREE.Box3().setFromObject(model)
         const mc = mb2.getCenter(new THREE.Vector3())
         model.position.sub(mc)              // centre at origin
@@ -193,7 +193,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         jet.add(shadow)
 
         const GROUND_Y = halfH                 // wheels touch y=0
-        const PARK_X = 4
+        const PARK_X = 2.5
         jet.position.set(PARK_X, GROUND_Y, 0)
         roller.rotation.set(0, Math.PI, 0)     // parked: nose LEFT
 
@@ -220,7 +220,8 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
 
         const launch = () => {
           if (phase !== 'ground') return
-          setPhase('taxi')
+          setFullscreen(true)   // switch once, at the click, so taxi+return+climb
+          setPhase('taxi')      // share ONE consistent shot (no mid-air reframe)
         }
         launchRef.current = launch
 
@@ -276,10 +277,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             roller.rotation.set(0, 0, 0)        // nose RIGHT, level
             model.rotation.x = 0
             shadow.visible = false
-            if (phaseT >= 1) {
-              setFullscreen(true)               // go fullscreen for the climb up the page
-              setPhase('climb')
-            }
+            if (phaseT >= 1) setPhase('climb')
 
           } else if (phase === 'climb') {
             // Clean pull-up to vertical, then a slow climb that scrolls the whole
@@ -291,9 +289,11 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             roller.rotation.set(0, 0, pitch)
             if (u > 0.32) { rollAngle += dt * 2.2; model.rotation.x = rollAngle } else model.rotation.x = 0
             shadow.visible = false
-            // Camera follows vertically only (no horizontal pan)
-            camPos.set(CAM_PARK.x, y - 2.5, CAM_PARK.z)
-            camLook.set(LOOK_PARK.x, y + 1.0, 0)
+            // Camera blends from the static parked framing into a vertical follow,
+            // so there's no sudden tilt when the climb starts
+            const camBlend = easeInOut(Math.min(u / 0.22, 1))
+            camPos.set(CAM_PARK.x, lerpN(CAM_PARK.y, y - 2.5, camBlend), CAM_PARK.z)
+            camLook.set(LOOK_PARK.x, lerpN(LOOK_PARK.y, y + 1.0, camBlend), 0)
             // Scroll the whole page from bottom to top, slowly, across the climb
             const maxScroll = document.body.scrollHeight - window.innerHeight
             window.scrollTo(0, Math.max(0, maxScroll * (1 - easeInOut(u))))
