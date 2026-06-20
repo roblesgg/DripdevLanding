@@ -4,10 +4,10 @@ import { motion } from 'framer-motion'
 import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import MeshGradientBackground from '@/components/MeshGradientBackground'
-import ProjectCarousel3D from '@/components/ProjectCarousel3D'
 import AnimatedSection from '@/components/AnimatedSection'
 import { SocialButtons } from '@/components/SocialLinks'
 
+const ProjectCarousel3D = dynamic(() => import('@/components/ProjectCarousel3D'), { ssr: false })
 const EasterEggJet = dynamic(() => import('@/components/EasterEggJet'), { ssr: false })
 
 const features = [
