@@ -283,11 +283,13 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             // Clean pull-up to vertical, then a slow climb that scrolls the whole
             // page up to the title; gentle barrel roll on the way up.
             const u = Math.min(phaseT, 1)
-            const pitch = lerpN(0, Math.PI / 2, easeInOut(Math.min(u / 0.32, 1)))
-            const y = lerpN(5, 64, easeIn(u))
+            // Rotate up WHILE rising at a steady (linear) speed — no slow-low
+            // start, no sudden sprint at the end
+            const pitch = lerpN(0, Math.PI / 2, easeInOut(Math.min(u / 0.5, 1)))
+            const y = lerpN(5, 58, u)
             jet.position.set(0, y, 0)
             roller.rotation.set(0, 0, pitch)
-            if (u > 0.32) { rollAngle += dt * 2.2; model.rotation.x = rollAngle } else model.rotation.x = 0
+            if (u > 0.3) { rollAngle += dt * 2.0; model.rotation.x = rollAngle } else model.rotation.x = 0
             shadow.visible = false
             // Camera blends from the static parked framing into a vertical follow,
             // so there's no sudden tilt when the climb starts
@@ -296,7 +298,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             camLook.set(LOOK_PARK.x, lerpN(LOOK_PARK.y, y + 1.0, camBlend), 0)
             // Scroll the whole page from bottom to top, slowly, across the climb
             const maxScroll = document.body.scrollHeight - window.innerHeight
-            window.scrollTo(0, Math.max(0, maxScroll * (1 - easeInOut(u))))
+            window.scrollTo(0, Math.max(0, maxScroll * (1 - u)))   // linear, synced with the climb
             if (phaseT >= 1) setPhase('impact')
 
           } else if (phase === 'impact') {

@@ -664,9 +664,14 @@ main {
 }
 
 .hero-logo {
-  width: clamp(340px, 68vw, 680px);
-  height: auto;
-  display: inline-block;
+  /* The PNG has big internal padding (the wordmark is the centre ~40%), so the
+     box is 3× the title height to look prominent, while negative top/bottom
+     margins keep the layout footprint = title height → the badge above and the
+     subtitle below stay in exactly the same position as with the text */
+  display: block;
+  height: calc(clamp(3.5rem, 12vw, 8rem) * 3);
+  width: auto;
+  margin: calc(clamp(3.5rem, 12vw, 8rem) * -1) auto;
   filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.22));
 }
 
