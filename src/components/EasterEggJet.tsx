@@ -210,13 +210,18 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
   return (
     <>
       <canvas ref={canvasRef} className="jet-canvas-overlay" />
-      {!launched && (
-        <button className="jet-launch-btn" onClick={() => launchRef.current?.()} aria-label="Despegar F-16">
+      <div className="jet-launch-wrap">
+        <button
+          className="jet-launch-btn"
+          onClick={() => launchRef.current?.()}
+          aria-label="Despegar F-16"
+          style={launched ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
+        >
           <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
             <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
           </svg>
         </button>
-      )}
+      </div>
     </>
   )
 }
