@@ -30,17 +30,18 @@ function spawnExplosion(scene: THREE.Scene, pos: THREE.Vector3, out: ExpPart[], 
 type SmokePart = { m: THREE.Mesh, life: number, maxLife: number, v: THREE.Vector3, grow: number }
 
 function spawnSmoke(scene: THREE.Scene, pos: THREE.Vector3, out: SmokePart[]) {
-  for (let i = 0; i < 70; i++) {
-    const g = 0.55 + Math.random() * 0.28
-    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(g, g, g * 1.03), transparent: true, opacity: 0, depthWrite: false })
+  // Small, sparse, wispy smoke cloud so the title swap is readable
+  for (let i = 0; i < 12; i++) {
+    const g = 0.55 + Math.random() * 0.18
+    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(g, g, g * 1.02), transparent: true, opacity: 0, depthWrite: false })
     const m = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8), mat)
-    m.position.copy(pos).add(new THREE.Vector3((Math.random()-0.5)*5, (Math.random()-0.5)*4, (Math.random()-0.5)*5))
-    m.scale.setScalar(0.5 + Math.random() * 0.9)
+    m.position.copy(pos).add(new THREE.Vector3((Math.random()-0.5)*4.5, (Math.random()-0.5)*3.0, (Math.random()-0.5)*4.5))
+    m.scale.setScalar(0.22 + Math.random() * 0.35)
     scene.add(m)
-    const L = 2.4 + Math.random() * 2.2
+    const L = 1.6 + Math.random() * 1.4
     out.push({
-      m, life: L, maxLife: L, grow: 1.6 + Math.random() * 2.4,
-      v: new THREE.Vector3((Math.random()-0.5)*0.7, 0.2 + Math.random()*0.6, (Math.random()-0.5)*0.7),
+      m, life: L, maxLife: L, grow: 0.6 + Math.random() * 0.9,
+      v: new THREE.Vector3((Math.random()-0.5)*0.4, 0.12 + Math.random()*0.25, (Math.random()-0.5)*0.4),
     })
   }
 }
@@ -231,30 +232,19 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         let phaseT = 0
         let rollAngle = 0
         let impactCalled = false
-        let titleNdcY = 0.38
         let lastTime = performance.now()
         let scrollFrom = 0
         let scrollTo = 0
-        let climbDistance = 26
         let restoreScrollBehavior: (() => void) | null = null
         let bt = 0   // beacon timer
-        const smokeOrigin = new THREE.Vector3()
 
         const setPhase = (p: Phase) => { phase = p; phaseRef.current = p; phaseT = 0 }
 
-        const durations: Record<string, number> = { taxi: 1.7, return: 2.8, climb: 5.4, smoke: 3.0 }
+        const durations: Record<string, number> = { taxi: 1.7, return: 2.8, climb: 7.0, smoke: 2.4 }
         const RETURN_PULL_PITCH = Math.PI * 0.22
-
-        const camPos  = new THREE.Vector3().copy(CAM_PARK)
-        const camLook = new THREE.Vector3().copy(LOOK_PARK)
-        const tmpV    = new THREE.Vector3()
-        const climbStartNdc = new THREE.Vector2()
-        const climbTargetNdc = new THREE.Vector2(0, 0.38)
-
-        const worldFromNdc = (ndcX: number, ndcY: number, distance: number, out: THREE.Vector3) => {
-          tmpV.set(ndcX, ndcY, 0.5).unproject(camera).sub(camera.position).normalize()
-          return out.copy(camera.position).addScaledVector(tmpV, distance)
-        }
+        const CAM_CLIMB_Y = 18   // how high the camera rises during the climb
+        const climbEnd = new THREE.Vector3(3.5, 48, 0)
+        const climbStart = new THREE.Vector3()
 
         const useImmediateScroll = () => {
           if (restoreScrollBehavior) return
@@ -272,26 +262,8 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         }
 
         const beginClimb = () => {
-          camera.position.copy(CAM_PARK)
-          camera.lookAt(LOOK_PARK)
-          camera.updateMatrixWorld()
-
-          const start = jet.position.clone().project(camera)
-          climbStartNdc.set(start.x, start.y)
-          climbDistance = camera.position.distanceTo(jet.position)
           scrollFrom = window.scrollY
           scrollTo = 0
-
-          const titleEl = document.querySelector('.hero-title')
-          if (titleEl) {
-            const r = titleEl.getBoundingClientRect()
-            const finalTitleCenterY = r.top + window.scrollY + r.height / 2 - scrollTo
-            titleNdcY = THREE.MathUtils.clamp(1 - 2 * (finalTitleCenterY / window.innerHeight), -0.55, 0.72)
-          } else {
-            titleNdcY = 0.38
-          }
-          climbTargetNdc.x = 0
-          climbTargetNdc.y = 1.55   // fly PAST the title and off the top of the screen
           setPhase('climb')
         }
 
@@ -339,7 +311,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             model.rotation.x = 0
             shadow.visible = true; shadow.position.y = -GROUND_Y + 0.02
             // Camera stays completely still — the jet runs across and exits frame
-            camPos.copy(CAM_PARK); camLook.copy(LOOK_PARK)
+            camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK)
             if (phaseT >= 1) {
               // Off-screen: retract gear + turn around to fly back in (still INLINE)
               setGear(false)
@@ -361,46 +333,39 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             if (phaseT >= 1) beginClimb()
 
           } else if (phase === 'climb') {
-            // Clean pull-up to vertical, then a slow climb that scrolls the whole
-            // page up to the title; gentle barrel roll on the way up.
+            // Smooth pull-up + steady world-space climb. The camera rises gently
+            // with the jet so it never looks stuck or teleported.
+            if (phaseT === 0) climbStart.copy(jet.position)
             const u = Math.min(phaseT, 1)
-            // Nose pitches up to vertical quickly & smoothly → climbs nose-first
-            // (not levitating). Gentle barrel roll on the way up.
-            const pitchT = easeInOut(Math.min(u / 0.35, 1))   // nose → vertical over the first 35%
-            const moveT = u                                     // LINEAR rise: keeps moving to the end
-            const scrollT = easeInOut(Math.min(u / 0.32, 1))   // reach the hero BEFORE the smoke drops
+            const moveT = easeInOut(u)
+            const scrollT = easeInOut(Math.min(u / 0.48, 1))
+            const pitchT = easeInOut(Math.min(u / 0.42, 1))
+
             roller.rotation.set(0, 0, lerpN(RETURN_PULL_PITCH, Math.PI / 2, pitchT))
-            // CONTINUOUS corkscrew spin the whole way — never freezes
-            rollAngle += dt * (3.4 + u * 3.6)
-            model.rotation.x = rollAngle
+            model.rotation.x = Math.sin(u * Math.PI * 1.6) * 0.12
             shadow.visible = false
-            airfield.visible = u < 0.15
 
-            // Camera stays EXACTLY at the parked framing (no follow → no wobble)
-            camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK); camera.updateMatrixWorld()
+            // Camera rises with the jet (slow follow)
+            const camY = lerpN(CAM_PARK.y, CAM_CLIMB_Y, moveT)
+            camera.position.set(CAM_PARK.x, camY, CAM_PARK.z)
+            camera.lookAt(LOOK_PARK.x, lerpN(LOOK_PARK.y, 18, moveT), LOOK_PARK.z)
 
-            // Scroll up to the hero fast so the DripDev title comes into view
+            // Scroll page up to hero
             window.scrollTo(0, Math.max(0, lerpN(scrollFrom, scrollTo, scrollT)))
 
-            // Base climb toward the title (screen-targeted), then a 3D helix
-            // (spiral with real depth) that corkscrews up and converges on the
-            // letters at the end.
-            const ndcX = lerpN(climbStartNdc.x, climbTargetNdc.x, moveT)
-            const ndcY = lerpN(climbStartNdc.y, climbTargetNdc.y, moveT)
-            worldFromNdc(ndcX, ndcY, climbDistance, jet.position)
-            const ang = u * Math.PI * 2 * 2.5         // 2.5 turns up
-            const rad = (1 - u) * 2.4                 // shrinks → lands on the letters
-            jet.position.x += Math.cos(ang) * rad
-            jet.position.z += Math.sin(ang) * rad     // depth → reads as 3D
-            jet.position.y += Math.cos(ang) * rad * 0.22
+            // Jet moves in a straight world-space line up and away
+            jet.position.lerpVectors(climbStart, climbEnd, moveT)
 
-            // As the jet passes over the DripDev letters, dump a big cloud of
-            // smoke there and swap the title for the logo (hidden by the smoke).
-            // The jet just keeps going and flies off the top of the screen.
-            if (!impactCalled && ndcY >= titleNdcY) {
+            // Airfield sinks away early and smoothly as the jet leaves the runway
+            if (u > 0.12) {
+              const sinkT = (u - 0.12) / 0.58
+              airfield.position.y = -sinkT * 42
+            }
+
+            // Smoke release near the title area (jet y ≈ 18) then fly off top
+            if (!impactCalled && jet.position.y >= 17) {
               impactCalled = true
-              worldFromNdc(0, titleNdcY, climbDistance, smokeOrigin)
-              spawnSmoke(scene, smokeOrigin, smoke)
+              spawnSmoke(scene, jet.position.clone(), smoke)
               onImpactRef.current()
             }
             if (phaseT >= 1) { jet.visible = false; setPhase('smoke') }
@@ -444,7 +409,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             s.v.multiplyScalar(0.97)
             s.m.scale.setScalar(s.m.scale.x + s.grow * dt)
             const t = s.life / s.maxLife                       // 1 → 0
-            const op = Math.min(1, (1 - t) * 6) * Math.min(1, t * 2.6) * 0.6
+            const op = Math.min(1, (1 - t) * 6) * Math.min(1, t * 2.6) * 0.35
             ;(s.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, op)
             if (s.life <= 0) { scene.remove(s.m); s.m.geometry.dispose(); smoke.splice(i, 1) }
           }
