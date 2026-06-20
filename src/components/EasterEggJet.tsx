@@ -6,7 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 function lerpN(a: number, b: number, t: number) { return a + (b - a) * t }
 
-type SmokePart = { m: THREE.Sprite; life: number; maxLife: number; v: THREE.Vector3; grow: number }
+type SmokePart = { m: THREE.Sprite; life: number; maxLife: number; v: THREE.Vector3; grow: number; maxOp: number }
 
 // Soft billboard sprites (same core technique as three.quarks / three-nebula)
 function makeSmokeTexture() {
@@ -22,6 +22,23 @@ function makeSmokeTexture() {
   return new THREE.CanvasTexture(c)
 }
 
+// A thick wide cloud that fully covers the title while the text swaps to the logo
+function addTitleSmoke(scene: THREE.Scene, tex: THREE.Texture, center: THREE.Vector3, halfW: number, out: SmokePart[]) {
+  for (let i = 0; i < 95; i++) {
+    const g = 0.6 + Math.random() * 0.2
+    const mat = new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(g, g, g * 1.03), transparent: true, opacity: 0, depthWrite: false })
+    const s = new THREE.Sprite(mat)
+    s.position.copy(center).add(new THREE.Vector3((Math.random() - 0.5) * halfW * 2.0, (Math.random() - 0.5) * halfW * 0.9, (Math.random() - 0.5) * 2.5))
+    s.scale.setScalar(halfW * 0.8 + Math.random() * halfW * 0.8)
+    scene.add(s)
+    const L = 3.2 + Math.random() * 1.8
+    out.push({
+      m: s, life: L, maxLife: L, grow: halfW * 0.55 + Math.random() * halfW * 0.5, maxOp: 0.95,
+      v: new THREE.Vector3((Math.random() - 0.5) * 0.55, 0.06 + Math.random() * 0.3, (Math.random() - 0.5) * 0.55),
+    })
+  }
+}
+
 function addPuff(scene: THREE.Scene, tex: THREE.Texture, pos: THREE.Vector3, out: SmokePart[], big: boolean) {
   const n = big ? 36 : 1
   for (let i = 0; i < n; i++) {
@@ -34,7 +51,7 @@ function addPuff(scene: THREE.Scene, tex: THREE.Texture, pos: THREE.Vector3, out
     scene.add(s)
     const L = (big ? 3.0 : 1.2) + Math.random() * (big ? 1.6 : 0.8)
     out.push({
-      m: s, life: L, maxLife: L, grow: (big ? 2.6 : 1.0) + Math.random() * 1.6,
+      m: s, life: L, maxLife: L, grow: (big ? 2.6 : 1.0) + Math.random() * 1.6, maxOp: 0.55,
       v: new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.12 + Math.random() * 0.4, (Math.random() - 0.5) * 0.5),
     })
   }
@@ -93,6 +110,11 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         const mc = new THREE.Box3().setFromObject(model).getCenter(new THREE.Vector3())
         model.position.sub(mc)
         model.traverse((o: THREE.Object3D) => { const m = o as THREE.Mesh; if (m.isMesh) { m.castShadow = true; m.receiveShadow = true } })
+        // Landing gear retracted (gear-up)
+        model.traverse((o: THREE.Object3D) => {
+          if (o.name.includes('landingOff')) o.visible = true
+          else if (o.name.includes('landingOn')) o.visible = false
+        })
 
         const roller = new THREE.Group(); roller.add(model)
         const jet = new THREE.Group(); jet.add(roller); jet.visible = false; scene.add(jet)
@@ -118,14 +140,26 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         const END_NDCY = 1.45              // off the top
         let titleNdcY = 0.4
         let titleWorldY = 0
+        const titleCenter = new THREE.Vector3()
+        let titleHalfW = 4
         let curve: THREE.CatmullRomCurve3 | null = null
-        let rollAngle = 0
         let phaseT = 0
         let released = false
         let trailT = 0
         let last = performance.now()
         const X_AXIS = new THREE.Vector3(1, 0, 0)
         const DUR = { fly: 8.8, settle: 3.0 }
+        const smoothstep = (x: number) => { const c = THREE.MathUtils.clamp(x, 0, 1); return c * c * (3 - 2 * c) }
+
+        // Lock / unlock page scroll while the jet is flying
+        let scrollLock: (() => void) | null = null
+        const lockScroll = () => {
+          if (scrollLock) return
+          const b = document.body.style, h = document.documentElement.style
+          const pb = b.overflow, ph = h.overflow
+          b.overflow = 'hidden'; h.overflow = 'hidden'
+          scrollLock = () => { b.overflow = pb; h.overflow = ph; scrollLock = null }
+        }
 
         const launch = () => {
           if (phaseRef.current !== 'idle') return
@@ -136,21 +170,28 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           html.style.scrollBehavior = 'auto'
           window.scrollTo(0, 0)
           html.style.scrollBehavior = prev
+          let titleNdcW = 0.6
           const el = document.querySelector('.hero-title')
           if (el) {
             const r = el.getBoundingClientRect()
             titleNdcY = THREE.MathUtils.clamp(1 - 2 * ((r.top + r.height / 2) / window.innerHeight), -0.6, 0.78)
+            titleNdcW = r.width / window.innerWidth
           }
-          // Smooth aerobatic flight path (CatmullRom): up from the bottom, a loop
-          // (pirouette) + spiral, up to the letters and off the top.
-          titleWorldY = worldFromNdc(0, titleNdcY, DIST, new THREE.Vector3()).y
+          // Title position + width in world space (for the smoke that covers it)
+          worldFromNdc(0, titleNdcY, DIST, titleCenter)
+          titleWorldY = titleCenter.y
+          titleHalfW = Math.max(3, Math.abs(worldFromNdc(titleNdcW, titleNdcY, DIST, new THREE.Vector3()).x - titleCenter.x))
+
+          // Smooth flight path (CatmullRom): a gentle rising spiral up to the
+          // letters and off the top — no tight loops, fluid banking.
           const wp: [number, number, number][] = [
-            [0.0, -1.35, 0], [0.22, -0.9, 1.4], [0.30, -0.5, -1.4], [0.06, -0.2, 1.1],
-            [0.34, 0.0, 0], [0.44, 0.24, 1.2], [0.12, 0.36, -1.2], [-0.24, 0.18, 0.7], [-0.04, -0.04, 0], [0.14, 0.22, 1.1],
-            [0.0, titleNdcY, 0], [0.0, 0.95, 0.7], [0.0, 1.5, 0],
+            [0.0, -1.35, 0], [0.22, -0.95, 1.4], [0.0, -0.55, -1.4], [-0.22, -0.15, 1.2],
+            [0.0, 0.18, -1.0], [0.2, titleNdcY - 0.06, 1.0], [0.0, titleNdcY, 0],
+            [0.0, 0.95, 0.5], [0.0, 1.5, 0],
           ]
           const pts = wp.map(([x, y, z]) => { const p = worldFromNdc(x, y, DIST, new THREE.Vector3()); p.z += z; return p })
           curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5)
+          lockScroll()
           canvas.style.opacity = '1'
           jet.visible = true
           released = false; phaseT = 0
@@ -174,22 +215,21 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
               curve.getPointAt(t, jet.position)                 // arc-length → constant speed
               curve.getTangentAt(t, tmpV)                       // smooth tangent → fluid banking
               jet.quaternion.setFromUnitVectors(X_AXIS, tmpV)   // nose follows the path
-              rollAngle += dt * 5.5
-              model.rotation.x = rollAngle                      // barrel roll around the fuselage
+              // ONE smooth barrel roll mid-climb (no constant spinning)
+              model.rotation.x = smoothstep((t - 0.46) / 0.3) * Math.PI * 2
             }
             abMat.opacity = 0.55 * (0.7 + Math.random() * 0.3)
             ab.scale.x = 0.8 + Math.random() * 0.5
 
-            // Dense smoke trail
+            // Smoke trail
             trailT += dt
-            if (trailT > 0.035) { trailT = 0; addPuff(scene, smokeTex, jet.position, smoke, false) }
+            if (trailT > 0.04) { trailT = 0; addPuff(scene, smokeTex, jet.position, smoke, false) }
 
-            // Passing the letters → a big 3D smoke cloud + swap to the logo
-            if (!released && jet.position.y >= titleWorldY) {
+            // Big WIDE cloud over the whole title, released a bit EARLY; the
+            // text→logo swap happens hidden behind it.
+            if (!released && jet.position.y >= titleWorldY - 2.4) {
               released = true
-              addPuff(scene, smokeTex, jet.position, smoke, true)
-              addPuff(scene, smokeTex, jet.position, smoke, true)
-              addPuff(scene, smokeTex, jet.position, smoke, true)   // lots of smoke at the swap
+              addTitleSmoke(scene, smokeTex, titleCenter, titleHalfW, smoke)
               onImpactRef.current()
             }
             if (phaseT >= 1) { jet.visible = false; phaseRef.current = 'settle'; phaseT = 0 }
@@ -206,6 +246,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
               smoke.length = 0
               renderer.render(scene, camera)
               canvas.style.opacity = '1'
+              scrollLock?.()                 // re-enable page scroll
               phaseRef.current = 'idle'
               setLaunched(false)
             }
@@ -219,7 +260,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             s.v.multiplyScalar(0.97)
             s.m.scale.setScalar(s.m.scale.x + s.grow * dt)
             const t = s.life / s.maxLife
-            ;(s.m.material as THREE.SpriteMaterial).opacity = Math.max(0, Math.min(1, (1 - t) * 6) * Math.min(1, t * 2.6) * 0.6)
+            ;(s.m.material as THREE.SpriteMaterial).opacity = Math.max(0, Math.min(1, (1 - t) * 12) * Math.min(1, t * 2.6) * s.maxOp)
             if (s.life <= 0) { scene.remove(s.m); (s.m.material as THREE.SpriteMaterial).dispose(); smoke.splice(i, 1) }
           }
 
@@ -232,7 +273,12 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
       }
     })()
 
-    return () => { cancelled = true; if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+    return () => {
+      cancelled = true
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+    }
   }, [])
 
   return (

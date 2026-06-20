@@ -31,7 +31,7 @@ export default function Home() {
   const handleImpact = useCallback(() => {
     // The jet leaves a cloud of smoke over the title; swap the text for the
     // logo behind it so it's revealed when the smoke clears.
-    setTimeout(() => setShowLogo(true), 500)
+    setTimeout(() => setShowLogo(true), 750)
   }, [])
 
   return (
