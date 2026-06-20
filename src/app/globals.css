@@ -25,9 +25,6 @@
 html {
   scroll-behavior: smooth;
   overflow-x: hidden;
-  /* Dark root background so the bottom overscroll gutter (under the dark
-     footer) shows night, not the white page background */
-  background-color: #080b18;
 }
 
 body {
@@ -555,94 +552,56 @@ main {
   width: 100%;
 }
 
-/* Footer — dark so the night diorama flows into it (no white strip below).
-   position:relative + z-index so it stacks ABOVE the fixed white .mesh-bg
-   (a positioned z-index:0 element otherwise paints over the static footer) */
+/* Footer */
 .footer {
-  position: relative;
-  z-index: 1;
   padding: 40px 0;
-  border-top: none;
+  border-top: 1px solid var(--glass-border);
   text-align: center;
-  color: rgba(255, 255, 255, 0.45);
-  background: #080b18;
+  color: var(--fg-secondary);
   font-size: 0.85rem;
   font-weight: 500;
 }
 
-
-/* ── Easter egg jet section ── */
-/* Full-width immersive diorama at the end of the page — no box */
-.jet-section {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  min-height: 560px;
-  overflow: hidden;
-  /* Long, gradual fade from the white page into the night sky — reaches the
-     dark high up so the night dominates (no hard cut) */
-  background: linear-gradient(
-    180deg,
-    var(--bg) 0%,
-    #d4dbe6 5%,
-    #a3aec4 10%,
-    #6f7b97 16%,
-    #414b69 22%,
-    #232b45 28%,
-    #121930 34%,
-    #080b18 42%,
-    #080b18 100%
-  );
-}
-
-.jet-hint {
-  position: absolute;
-  bottom: 32px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  pointer-events: none;
-  animation: jetFloat 2.5s ease-in-out infinite;
-}
-
-@keyframes jetFloat {
-  0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.6; }
-  50%       { transform: translateX(-50%) translateY(-4px); opacity: 0.9; }
-}
-
-.jet-canvas-inline {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  cursor: pointer;
-  background: transparent;
-}
-
-.jet-canvas-fullscreen {
+/* ── Easter egg: launch button + fullscreen jet overlay ── */
+.jet-canvas-overlay {
   position: fixed;
   inset: 0;
-  width: 100vw !important;
-  height: 100vh !important;
+  width: 100vw;
+  height: 100vh;
   z-index: 9999;
   pointer-events: none;
   display: block;
 }
 
-.jet-backdrop {
+.jet-launch-btn {
   position: fixed;
-  inset: 0;
-  z-index: 9998;
-  background: #080b18;
-  pointer-events: none;
-  opacity: 0;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 95;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+}
+
+.jet-launch-btn:hover {
+  transform: translateX(-50%) translateY(-3px) scale(1.08);
+  box-shadow: var(--shadow-lg);
+}
+
+.jet-launch-btn:active {
+  transform: translateX(-50%) scale(0.94);
 }
 
 /* ── Letter explosion ── */
