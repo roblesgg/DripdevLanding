@@ -199,8 +199,9 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           // letters and off the top — no tight loops, fluid banking.
           const wp: [number, number, number][] = [
             [0.0, -1.35, 0], [0.22, -0.95, 1.4], [0.0, -0.55, -1.4], [-0.22, -0.15, 1.2],
-            [0.0, 0.18, -1.0], [0.2, titleNdcY - 0.06, 1.0], [0.0, titleNdcY, 0],
-            [0.0, 0.95, 0.5], [0.0, 1.5, 0],
+            [0.0, 0.16, -0.9], [0.1, titleNdcY - 0.3, 0.4],     // straighten toward the centre…
+            // …then a STRAIGHT vertical exit (all x=0, z=0 → no abrupt break)
+            [0.0, titleNdcY - 0.05, 0], [0.0, titleNdcY + 0.35, 0], [0.0, 0.95, 0], [0.0, 1.5, 0],
           ]
           const pts = wp.map(([x, y, z]) => { const p = worldFromNdc(x, y, DIST, new THREE.Vector3()); p.z += z; return p })
           curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5)
