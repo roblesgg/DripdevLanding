@@ -345,14 +345,15 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             const u = Math.min(phaseT, 1)
             // Nose pitches up to vertical quickly & smoothly → climbs nose-first
             // (not levitating). Gentle barrel roll on the way up.
-            const pitchT = easeInOut(Math.min(u / 0.45, 1))   // nose → vertical over the first 45%
+            const pitchT = easeInOut(Math.min(u / 0.35, 1))   // nose → vertical over the first 35%
             const moveT = u                                     // LINEAR rise: keeps moving to the end
             const scrollT = easeInOut(u)
             roller.rotation.set(0, 0, lerpN(RETURN_PULL_PITCH, Math.PI / 2, pitchT))
-            // Barrel roll only in the upper half, while it is still clearly rising
-            if (u > 0.5) { rollAngle += dt * 1.3; model.rotation.x = rollAngle } else model.rotation.x = 0
+            // CONTINUOUS corkscrew spin the whole way — never freezes
+            rollAngle += dt * (3.4 + u * 3.6)
+            model.rotation.x = rollAngle
             shadow.visible = false
-            airfield.visible = u < 0.18
+            airfield.visible = u < 0.15
 
             // Camera stays EXACTLY at the parked framing (no follow → no wobble)
             camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK); camera.updateMatrixWorld()
@@ -360,11 +361,17 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             // Scroll up to the hero fast so the DripDev title comes into view
             window.scrollTo(0, Math.max(0, lerpN(scrollFrom, scrollTo, scrollT)))
 
-            // Fly the jet UP the screen to the title's exact position and stop
-            // there (not the ceiling). Target the title by screen coords → 3D.
+            // Base climb toward the title (screen-targeted), then a 3D helix
+            // (spiral with real depth) that corkscrews up and converges on the
+            // letters at the end.
             const ndcX = lerpN(climbStartNdc.x, climbTargetNdc.x, moveT)
             const ndcY = lerpN(climbStartNdc.y, climbTargetNdc.y, moveT)
             worldFromNdc(ndcX, ndcY, climbDistance, jet.position)
+            const ang = u * Math.PI * 2 * 2.5         // 2.5 turns up
+            const rad = (1 - u) * 2.4                 // shrinks → lands on the letters
+            jet.position.x += Math.cos(ang) * rad
+            jet.position.z += Math.sin(ang) * rad     // depth → reads as 3D
+            jet.position.y += Math.cos(ang) * rad * 0.22
             if (phaseT >= 1) setPhase('impact')
 
           } else if (phase === 'impact') {
