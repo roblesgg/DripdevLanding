@@ -191,7 +191,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             titleNdcW = r.width / window.innerWidth
           }
           // Title position (lowered a touch so the smoke sits ON the letters) + width
-          worldFromNdc(0, titleNdcY - 0.1, DIST, titleCenter)
+          worldFromNdc(0, titleNdcY - 0.18, DIST, titleCenter)
           titleWorldY = titleCenter.y
           titleHalfW = Math.max(3, Math.abs(worldFromNdc(titleNdcW, titleNdcY, DIST, new THREE.Vector3()).x - titleCenter.x))
 
