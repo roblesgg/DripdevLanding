@@ -126,8 +126,8 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
         const testBox = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({ color: 0x6366f1 }))
         testBox.position.set(0, 2, 0); scene.add(testBox)
 
-        const CAM_PARK = new THREE.Vector3(-1, 3.2, 18)
-        const LOOK_PARK = new THREE.Vector3(0, 1.4, 0)
+        const CAM_PARK = new THREE.Vector3(-1, 4.4, 27)   // pulled back → diorama smaller
+        const LOOK_PARK = new THREE.Vector3(0, 2.2, 0)
         camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK)
         renderer.render(scene, camera)
 
@@ -283,33 +283,38 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             // Clean pull-up to vertical, then a slow climb that scrolls the whole
             // page up to the title; gentle barrel roll on the way up.
             const u = Math.min(phaseT, 1)
-            // Rotate up WHILE rising at a steady (linear) speed — no slow-low
-            // start, no sudden sprint at the end
             const pitch = lerpN(0, Math.PI / 2, easeInOut(Math.min(u / 0.5, 1)))
-            const y = lerpN(5, 58, u)
-            jet.position.set(0, y, 0)
+            const jy = lerpN(5, 56, u)              // steady (linear) climb
+            jet.position.set(0, jy, 0)
             roller.rotation.set(0, 0, pitch)
             if (u > 0.3) { rollAngle += dt * 2.0; model.rotation.x = rollAngle } else model.rotation.x = 0
             shadow.visible = false
-            // Camera blends from the static parked framing into a vertical follow,
-            // so there's no sudden tilt when the climb starts
-            const camBlend = easeInOut(Math.min(u / 0.22, 1))
-            camPos.set(CAM_PARK.x, lerpN(CAM_PARK.y, y - 2.5, camBlend), CAM_PARK.z)
-            camLook.set(LOOK_PARK.x, lerpN(LOOK_PARK.y, y + 1.0, camBlend), 0)
-            // Scroll the whole page from bottom to top, slowly, across the climb
+            // Smooth handoff from the parked framing, then the jet visibly RISES
+            // through the frame (centre → top) as it climbs. Camera set DIRECTLY
+            // (no lerp) so there is no lag or teleport.
+            const blend = easeInOut(Math.min(u / 0.16, 1))
+            const riseInFrame = lerpN(0, 11, u)     // jet gains height within the frame
+            const lookY = lerpN(LOOK_PARK.y, jy - riseInFrame, blend)
+            const posY  = lerpN(CAM_PARK.y, jy - riseInFrame - 3, blend)
+            camera.position.set(CAM_PARK.x, posY, CAM_PARK.z)
+            camera.lookAt(LOOK_PARK.x, lookY, 0)
+            camLook.set(LOOK_PARK.x, lookY, 0)       // remembered for the impact shake
             const maxScroll = document.body.scrollHeight - window.innerHeight
-            window.scrollTo(0, Math.max(0, maxScroll * (1 - u)))   // linear, synced with the climb
+            window.scrollTo(0, Math.max(0, maxScroll * (1 - u)))   // linear, synced
             if (phaseT >= 1) setPhase('impact')
 
           } else if (phase === 'impact') {
-            const u = Math.min(phaseT, 1)
-            if (u >= 0.15 && !impactCalled) {
+            if (phaseT >= 0.15 && !impactCalled) {
               impactCalled = true
               spawnExplosion(scene, jet.position, parts, flash)
               jet.visible = false
               onImpactRef.current()
             }
-            camLook.lerp(camPos.clone().setZ(0), 0.02)
+            // Keep the camera where the climb left it, with a brief shake
+            const shake = Math.max(0, 0.3 - phaseT) * 0.7
+            camera.position.x += (Math.random() - 0.5) * shake
+            camera.position.y += (Math.random() - 0.5) * shake
+            camera.lookAt(camLook)
             if (phaseT >= 1) setPhase('fadeout')
 
           } else if (phase === 'fadeout') {
@@ -318,12 +323,9 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             if (cur <= 0.03) { cancelled = true; setDone(true); renderer.dispose(); if (rafRef.current) cancelAnimationFrame(rafRef.current); return }
           }
 
-          // Camera: climb/impact = smooth vertical follow; everything else (taxi,
-          // return) = the exact static parked framing. Ground sets it in its branch.
-          if (phase === 'climb' || phase === 'impact') {
-            camera.position.lerp(camPos, 0.06)
-            camera.lookAt(camLook)
-          } else if (phase !== 'ground') {
+          // Camera: ground/climb/impact set their own above; taxi & return use
+          // the exact static parked framing.
+          if (phase === 'taxi' || phase === 'return') {
             camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK)
           }
 

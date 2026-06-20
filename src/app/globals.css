@@ -669,9 +669,9 @@ main {
      margins keep the layout footprint = title height → the badge above and the
      subtitle below stay in exactly the same position as with the text */
   display: block;
-  height: calc(clamp(3.5rem, 12vw, 8rem) * 3);
+  height: calc(clamp(3.5rem, 12vw, 8rem) * 4.2);
   width: auto;
-  margin: calc(clamp(3.5rem, 12vw, 8rem) * -1) auto;
+  margin: calc(clamp(3.5rem, 12vw, 8rem) * -1.6) auto;
   filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.22));
 }
 
