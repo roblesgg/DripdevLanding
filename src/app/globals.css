@@ -636,6 +636,15 @@ main {
   display: block;
 }
 
+.jet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: #080b18;
+  pointer-events: none;
+  opacity: 0;
+}
+
 /* ── Letter explosion ── */
 .hero-title .letter {
   display: inline-block;

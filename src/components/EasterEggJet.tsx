@@ -30,18 +30,18 @@ function spawnExplosion(scene: THREE.Scene, pos: THREE.Vector3, out: ExpPart[], 
 type SmokePart = { m: THREE.Mesh, life: number, maxLife: number, v: THREE.Vector3, grow: number }
 
 function spawnSmoke(scene: THREE.Scene, pos: THREE.Vector3, out: SmokePart[]) {
-  // Small, sparse, wispy smoke cloud so the title swap is readable
-  for (let i = 0; i < 12; i++) {
+  // Very light smoke haze that lets the logo read through
+  for (let i = 0; i < 8; i++) {
     const g = 0.55 + Math.random() * 0.18
     const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(g, g, g * 1.02), transparent: true, opacity: 0, depthWrite: false })
     const m = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8), mat)
-    m.position.copy(pos).add(new THREE.Vector3((Math.random()-0.5)*4.5, (Math.random()-0.5)*3.0, (Math.random()-0.5)*4.5))
-    m.scale.setScalar(0.22 + Math.random() * 0.35)
+    m.position.copy(pos).add(new THREE.Vector3((Math.random()-0.5)*4.0, (Math.random()-0.5)*2.5, (Math.random()-0.5)*4.0))
+    m.scale.setScalar(0.2 + Math.random() * 0.3)
     scene.add(m)
-    const L = 1.6 + Math.random() * 1.4
+    const L = 1.4 + Math.random() * 1.2
     out.push({
-      m, life: L, maxLife: L, grow: 0.6 + Math.random() * 0.9,
-      v: new THREE.Vector3((Math.random()-0.5)*0.4, 0.12 + Math.random()*0.25, (Math.random()-0.5)*0.4),
+      m, life: L, maxLife: L, grow: 0.45 + Math.random() * 0.65,
+      v: new THREE.Vector3((Math.random()-0.5)*0.35, 0.1 + Math.random()*0.2, (Math.random()-0.5)*0.35),
     })
   }
 }
@@ -50,6 +50,7 @@ type Phase = 'loading'|'ground'|'taxi'|'return'|'climb'|'smoke'|'fadeout'
 
 export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
   const canvasRef    = useRef<HTMLCanvasElement>(null)
+  const backdropRef  = useRef<HTMLDivElement>(null)
   const rafRef       = useRef<number|null>(null)
   const phaseRef     = useRef<Phase>('loading')
   const launchRef    = useRef<(()=>void)|null>(null)
@@ -240,10 +241,10 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
 
         const setPhase = (p: Phase) => { phase = p; phaseRef.current = p; phaseT = 0 }
 
-        const durations: Record<string, number> = { taxi: 1.7, return: 2.8, climb: 7.0, smoke: 2.4 }
+        const durations: Record<string, number> = { taxi: 1.7, return: 2.8, climb: 5.5, smoke: 1.5 }
         const RETURN_PULL_PITCH = Math.PI * 0.22
-        const CAM_CLIMB_Y = 18   // how high the camera rises during the climb
-        const climbEnd = new THREE.Vector3(3.5, 48, 0)
+        const CAM_CLIMB_Y = 55   // camera rises high so the airfield recedes naturally
+        const climbEnd = new THREE.Vector3(3, 80, 0)
         const climbStart = new THREE.Vector3()
 
         const useImmediateScroll = () => {
@@ -271,6 +272,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
           if (phase !== 'ground') return
           useImmediateScroll()
           setFullscreen(true)   // switch once, at the click, so taxi+return+climb
+          if (backdropRef.current) backdropRef.current.style.opacity = '1'
           setPhase('taxi')      // share ONE consistent shot (no mid-air reframe)
         }
         launchRef.current = launch
@@ -333,53 +335,60 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             if (phaseT >= 1) beginClimb()
 
           } else if (phase === 'climb') {
-            // Smooth pull-up + steady world-space climb. The camera rises gently
-            // with the jet so it never looks stuck or teleported.
+            // Clean climb: camera and jet both rise; the airfield stays put and
+            // simply recedes below. No artificial sinking, no giant close-up.
             if (phaseT === 0) climbStart.copy(jet.position)
             const u = Math.min(phaseT, 1)
             const moveT = easeInOut(u)
-            const scrollT = easeInOut(Math.min(u / 0.48, 1))
-            const pitchT = easeInOut(Math.min(u / 0.42, 1))
+            const scrollT = easeInOut(Math.min(u / 0.45, 1))
+            const pitchT = easeInOut(Math.min(u / 0.38, 1))
 
             roller.rotation.set(0, 0, lerpN(RETURN_PULL_PITCH, Math.PI / 2, pitchT))
-            model.rotation.x = Math.sin(u * Math.PI * 1.6) * 0.12
+            model.rotation.x = Math.sin(u * Math.PI) * 0.10
             shadow.visible = false
 
-            // Camera rises with the jet (slow follow)
+            // Camera follows the jet up; the airfield naturally falls away
             const camY = lerpN(CAM_PARK.y, CAM_CLIMB_Y, moveT)
             camera.position.set(CAM_PARK.x, camY, CAM_PARK.z)
-            camera.lookAt(LOOK_PARK.x, lerpN(LOOK_PARK.y, 18, moveT), LOOK_PARK.z)
+            camera.lookAt(LOOK_PARK.x, lerpN(LOOK_PARK.y, 34, moveT), LOOK_PARK.z)
 
-            // Scroll page up to hero
+            // Scroll page up to hero while we are hidden by the dark backdrop
             window.scrollTo(0, Math.max(0, lerpN(scrollFrom, scrollTo, scrollT)))
 
-            // Jet moves in a straight world-space line up and away
+            // Jet climbs in a straight, smooth arc
             jet.position.lerpVectors(climbStart, climbEnd, moveT)
 
-            // Airfield sinks away early and smoothly as the jet leaves the runway
-            if (u > 0.12) {
-              const sinkT = (u - 0.12) / 0.58
-              airfield.position.y = -sinkT * 42
-            }
-
-            // Smoke release near the title area (jet y ≈ 18) then fly off top
-            if (!impactCalled && jet.position.y >= 17) {
+            // Smoke release when the jet crosses the title band, then it keeps going
+            if (!impactCalled && jet.position.y >= 25) {
               impactCalled = true
               spawnSmoke(scene, jet.position.clone(), smoke)
               onImpactRef.current()
             }
-            if (phaseT >= 1) { jet.visible = false; setPhase('smoke') }
+            if (phaseT >= 1) { jet.visible = false; airfield.visible = false; setPhase('smoke') }
 
           } else if (phase === 'smoke') {
-            // Jet is gone; the smoke billows over the title then clears, revealing
-            // the logo underneath. Camera holds the framing.
+            // Jet is gone; smoke drifts over the title while the dark backdrop
+            // dissolves, revealing the hero logo underneath.
             camera.position.copy(CAM_PARK); camera.lookAt(LOOK_PARK)
+            if (backdropRef.current) {
+              const op = Math.max(0, parseFloat(backdropRef.current.style.opacity || '1') - dt * 0.55)
+              backdropRef.current.style.opacity = String(op)
+            }
             if (phaseT >= 1) setPhase('fadeout')
 
           } else if (phase === 'fadeout') {
             const cur = parseFloat(canvas.style.opacity || '1')
-            canvas.style.opacity = String(Math.max(0, cur - dt * 1.1))
-            if (cur <= 0.03) { cancelled = true; restoreScrollBehavior?.(); setDone(true); renderer.dispose(); if (rafRef.current) cancelAnimationFrame(rafRef.current); return }
+            const next = Math.max(0, cur - dt * 1.4)
+            canvas.style.opacity = String(next)
+            if (backdropRef.current) backdropRef.current.style.opacity = String(next)
+            if (next <= 0.03) {
+              cancelled = true
+              restoreScrollBehavior?.()
+              setDone(true)
+              renderer.dispose()
+              if (rafRef.current) cancelAnimationFrame(rafRef.current)
+              return
+            }
           }
 
           // Camera: ground/climb/impact set their own above; taxi & return use
@@ -409,7 +418,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
             s.v.multiplyScalar(0.97)
             s.m.scale.setScalar(s.m.scale.x + s.grow * dt)
             const t = s.life / s.maxLife                       // 1 → 0
-            const op = Math.min(1, (1 - t) * 6) * Math.min(1, t * 2.6) * 0.35
+            const op = Math.min(1, (1 - t) * 6) * Math.min(1, t * 2.6) * 0.25
             ;(s.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, op)
             if (s.life <= 0) { scene.remove(s.m); s.m.geometry.dispose(); smoke.splice(i, 1) }
           }
@@ -432,6 +441,7 @@ export default function EasterEggJet({ onImpact }: { onImpact: () => void }) {
   return (
     <section className="jet-section">
       <div className="jet-hint">{hint}</div>
+      <div ref={backdropRef} className="jet-backdrop" aria-hidden="true" />
       <canvas
         ref={canvasRef}
         onClick={() => { if (phaseRef.current === 'ground') launchRef.current?.() }}
