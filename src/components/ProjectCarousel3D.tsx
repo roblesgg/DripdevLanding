@@ -29,7 +29,7 @@ const projects: Project[] = [
     image: '/zonacliente-icon.png',
     status: 'En vivo',
     statusType: 'live',
-    link: 'https://zonacliente.dripdev.dev/descargar',
+    link: 'https://zonacliente.vercel.app/descargar',
     accent: '#1d4ed8',
   },
   {
