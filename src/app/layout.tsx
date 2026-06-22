@@ -3,8 +3,8 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'DripDev | Desarrollos creativos y eficaces',
-  description: 'Marca personal de desarrollo de aplicaciones y herramientas digitales. Creador de VeoVeo, RDLC Auto Header y más proyectos.',
-  keywords: ['DripDev', 'Álvaro Robles González', 'VeoVeo', 'desarrollador apps', 'React Native', 'Next.js', 'RDLC Auto Header'],
+  description: 'Marca personal de desarrollo de aplicaciones y herramientas digitales. Creador de VeoVeo, Zona Cliente, RDLC Auto Header y más proyectos.',
+  keywords: ['DripDev', 'Álvaro Robles González', 'VeoVeo', 'Zona Cliente', 'CRM', 'desarrollador apps', 'React Native', 'Next.js', 'RDLC Auto Header'],
   authors: [{ name: 'Álvaro Robles González' }],
   icons: {
     icon: '/dripdev-logo.png',

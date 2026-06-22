@@ -24,6 +24,15 @@ const projects: Project[] = [
     accent: '#6366f1',
   },
   {
+    title: 'Zona Cliente',
+    description: 'CRM para gestionar hospitales, contactos, empresas y encargos. Web y app Android.',
+    image: '/zonacliente-icon.png',
+    status: 'En vivo',
+    statusType: 'live',
+    link: 'https://zonacliente.dripdev.dev/descargar',
+    accent: '#1d4ed8',
+  },
+  {
     title: 'RDLC Auto Header',
     description: 'Extensión VS Code para automatizar encabezados en informes RDLC.',
     image: '/rdlc-icon.png',
