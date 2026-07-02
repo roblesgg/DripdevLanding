@@ -33,6 +33,15 @@ const projects: Project[] = [
     accent: '#1d4ed8',
   },
   {
+    title: 'imputa.me',
+    description: 'App de escritorio para registrar tus horas por tarea y consultarlas en un calendario semanal. Vive en la bandeja del sistema.',
+    image: '/imputame-icon.png',
+    status: 'En vivo',
+    statusType: 'live',
+    link: 'https://imputame.dripdev.dev/descargar',
+    accent: '#6366f1',
+  },
+  {
     title: 'RDLC Auto Header',
     description: 'Extensión VS Code para automatizar encabezados en informes RDLC.',
     image: '/rdlc-icon.png',
