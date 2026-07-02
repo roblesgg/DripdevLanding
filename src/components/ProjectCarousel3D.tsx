@@ -69,11 +69,11 @@ function useCardSpacing() {
   useEffect(() => {
     const update = () => {
       const w = window.innerWidth
-      if (w < 400) { setSpacing(178); setRotate(38) }
-      else if (w < 640) { setSpacing(248); setRotate(43) }
-      else if (w < 768) { setSpacing(310); setRotate(45) }
-      else if (w < 1024) { setSpacing(370); setRotate(48) }
-      else { setSpacing(440); setRotate(50) }
+      if (w < 400) { setSpacing(132); setRotate(35) }
+      else if (w < 640) { setSpacing(170); setRotate(38) }
+      else if (w < 768) { setSpacing(210); setRotate(40) }
+      else if (w < 1024) { setSpacing(248); setRotate(42) }
+      else { setSpacing(288); setRotate(44) }
     }
     update()
     window.addEventListener('resize', update)
@@ -87,14 +87,22 @@ function getVariant(offset: number, spacing: number, rotate: number) {
   if (offset === 0) {
     return { x: 0, rotateY: 0, scale: 1, opacity: 1, zIndex: 10, filter: 'blur(0px) brightness(1)' }
   }
-  const dir = offset > 0 ? -1 : 1
+  const dir = offset > 0 ? 1 : -1
+  const abs = Math.abs(offset)
+  // Neighbours tuck in close behind the centre card; further ones shrink and
+  // fade into the background so the whole thing reads as one compact stack.
+  const x = dir * (spacing + (abs - 1) * 46)
+  const scale = abs === 1 ? 0.82 : 0.64
+  const opacity = abs === 1 ? 0.8 : 0.4
+  const blur = abs === 1 ? 2 : 5
+  const brightness = abs === 1 ? 0.92 : 0.8
   return {
-    x: offset * spacing,
-    rotateY: dir * rotate,
-    scale: 0.66,
-    opacity: 0.5,
-    zIndex: 10 - Math.abs(offset),
-    filter: 'blur(4px) brightness(0.82)',
+    x,
+    rotateY: -dir * rotate,
+    scale,
+    opacity,
+    zIndex: 10 - abs,
+    filter: `blur(${blur}px) brightness(${brightness})`,
   }
 }
 
@@ -158,7 +166,7 @@ export default function ProjectCarousel3D() {
                 initial={false}
                 animate={variant}
                 transition={{ type: 'spring', stiffness: 60, damping: 18, mass: 1 }}
-                whileHover={isCenter ? { y: -12, scale: 1.035 } : { scale: 0.72, opacity: 0.72 }}
+                whileHover={isCenter ? { y: -12, scale: 1.035 } : { scale: 0.88, opacity: 0.95 }}
                 style={{ transformStyle: 'preserve-3d' }}
                 onClick={(e) => {
                   // A non-active card just gets selected (brought to the front);
