@@ -17,8 +17,8 @@ const features = [
 ]
 
 const stats = [
-  { number: '2+', label: 'Proyectos públicos' },
-  { number: '1', label: 'App publicada' },
+  { number: '4', label: 'Proyectos públicos' },
+  { number: '3', label: 'Apps publicadas' },
   { number: '1', label: 'Extensión VS Code' },
   { number: '∞', label: 'En desarrollo' },
 ]
